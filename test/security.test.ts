@@ -16,7 +16,7 @@ describe("seguridad", () => {
   });
 
   it("ninguna página tiene scripts escritos dentro del HTML", async () => {
-    for (const page of ["/", "/evento.html", "/orden.html", "/login.html", "/panel.html", "/panel-evento.html", "/puerta.html", "/admin.html"]) {
+    for (const page of ["/", "/evento.html", "/orden.html", "/login.html", "/panel.html", "/panel-evento.html", "/puerta.html", "/admin.html", "/restablecer.html"]) {
       const res = await request(app).get(page);
       expect(res.status, page).toBe(200);
       expect(res.text, page).not.toMatch(/<script(?![^>]*\bsrc=)[^>]*>/);

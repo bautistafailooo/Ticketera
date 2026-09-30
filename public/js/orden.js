@@ -116,6 +116,15 @@ function renderPaid(order) {
     </div>
 
     <section class="card" style="margin-top: 24px">
+      <h2>Te las mandamos por mail</h2>
+      <p class="muted">Enviamos las entradas a <strong style="color: var(--text)">${escapeHtml(order.buyerEmail)}</strong>. Si no te llegaron, revisá el spam o reenvialas.</p>
+      <div class="form-actions" style="margin-top: 8px">
+        <button type="button" class="btn btn-secondary" id="resend">Reenviar por mail</button>
+      </div>
+      <p id="resend-message" role="status" style="margin: 12px 0 0"></p>
+    </section>
+
+    <section class="card" style="margin-top: 24px">
       <h2>Guardá este link</h2>
       <p class="muted">Con este link volvés a ver tus entradas cuando quieras. No lo compartas: quien lo tenga puede usarlas.</p>
       <div class="link-box">
@@ -138,6 +147,20 @@ function renderPaid(order) {
     setTimeout(() => (e.target.textContent = "Copiar"), 2000);
   });
   document.getElementById("print").addEventListener("click", () => print());
+
+  document.getElementById("resend").addEventListener("click", async (e) => {
+    const message = document.getElementById("resend-message");
+    e.target.disabled = true;
+    try {
+      const res = await orderApi("/resend-email", { method: "POST" });
+      message.className = "success";
+      message.textContent = `Listo, las reenviamos a ${res.email}.`;
+    } catch (err) {
+      message.className = "error";
+      message.textContent = err.message;
+    }
+    setTimeout(() => (e.target.disabled = false), 5000);
+  });
 }
 
 function renderClosed(order) {

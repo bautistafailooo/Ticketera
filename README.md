@@ -48,6 +48,14 @@ En el panel, cada evento indica si está visible en la cartelera y, si no, por q
 
 **Flyers.** El organizador sube la imagen del evento desde el panel. El navegador la achica (máximo 1600 px, WebP) antes de subirla, lo que además borra los metadatos de la foto. El servidor verifica por su contenido que sea JPG, PNG o WebP (hasta 5 MB) y la guarda en `UPLOAD_DIR` con un nombre aleatorio. Se sirve en `/media/<archivo>`. Las mismas reglas de edición que el resto del evento: un organizador no confiable no puede cambiarla después de aprobado.
 
+**Mails.** Se mandan:
+- al comprador, las entradas con el QR de cada una apenas la orden queda paga (y se pueden reenviar desde la página de la compra);
+- "Olvidé mi contraseña": un link que vale una hora y sirve una sola vez (se guarda solo el hash del token; al usarlo se cierran todas las sesiones);
+- al organizador, cuando su evento se aprueba, se rechaza (con el motivo), se pausa o se reactiva;
+- a los administradores, cuando llega un evento para revisar.
+
+Sin `SMTP_URL`, los mails no se envían: se guardan como `.html` en `mail-outbox/` para abrirlos en el navegador. Los mails se mandan sin frenar la respuesta: si el envío falla, queda en el log.
+
 **Códigos de entrada.** Formato `K7QM-4XTP-9HWD` (Base32 de Crockford, sin I, L, O ni U) para que se puedan dictar. Al cargarlos a mano no importan mayúsculas, espacios ni guiones, y se corrige O→0 e I/L→1. Las entradas con el formato anterior siguen siendo válidas.
 
 ## Reglas y protecciones
@@ -74,6 +82,9 @@ En el panel, cada evento indica si está visible en la cartelera y, si no, por q
 | `SIMULATED_PAYMENTS`  | `true` en desarrollo, `false` en producción | Permite confirmar compras sin cobrar             |
 | `TRUST_PROXY`         | `0`                            | Cantidad de proxies delante del servidor (para leer la IP real) |
 | `UPLOAD_DIR`          | `uploads`                      | Carpeta de los flyers. En producción, un disco persistente     |
+| `PUBLIC_URL`          | `http://localhost:3000`        | Dirección pública del sitio, para los links de los mails       |
+| `SMTP_URL`            | —                              | Servidor de envío de mails, ej. `smtps://usuario:clave@smtp.resend.com:465` |
+| `MAIL_FROM`           | `ecko <no-responder@ecko.local>` | Remitente de los mails                                       |
 
 ## Modelo de datos
 
@@ -100,6 +111,7 @@ Públicos:
 | POST   | `/orders`                         | Comprar entradas (devuelve el id y la clave de la orden) |
 | GET    | `/orders/:id`                     | Ver la orden (header `x-order-token`)                   |
 | POST   | `/orders/:id/simulate-payment`    | Pago simulado (header `x-order-token`; solo si está activado) |
+| POST   | `/orders/:id/resend-email`        | Reenviar las entradas por mail (header `x-order-token`) |
 | GET    | `/tickets/:code/qr.svg`           | Imagen QR de una entrada paga                           |
 
 Cuentas:
@@ -109,6 +121,8 @@ Cuentas:
 | POST   | `/auth/register`  | Crear cuenta de organizador  |
 | POST   | `/auth/login`     | Iniciar sesión               |
 | POST   | `/auth/logout`    | Cerrar sesión                |
+| POST   | `/auth/forgot`    | Mandar link para cambiar la contraseña: `{ "email" }` |
+| POST   | `/auth/reset`     | Cambiar la contraseña con el link: `{ "token", "password" }` |
 | GET    | `/auth/me`        | Usuario logueado             |
 
 Organizador (requieren sesión y solo acceden a eventos propios):
@@ -151,7 +165,7 @@ App de puerta (requieren el header `x-door-token` con la clave del link de puert
 
 1. **Pagos reales** con Mercado Pago (Checkout Pro + webhook). Contemplar un pago que llega después de que la orden venció.
 2. **Publicar online** con https y PostgreSQL (cambiar `provider` y el adapter de Prisma). Detrás de un proxy, configurar `TRUST_PROXY`. Los flyers necesitan un disco persistente (`UPLOAD_DIR`) o un almacenamiento de archivos (S3, R2).
-3. **Entrega de entradas por email**, con el link de la compra.
+3. **Configurar el envío de mails** (`SMTP_URL`, `MAIL_FROM`, `PUBLIC_URL`) con un proveedor como Resend o Brevo, con el dominio verificado (SPF y DKIM) para que no caigan en spam.
 4. **Límites de pedidos compartidos** (por ejemplo con Redis) si se corre más de una instancia del servidor.
 5. `npm audit` marca alertas en la herramienta de línea de comandos de Prisma (soporte MySQL y lectura de su configuración). No afectan a la ticketera: revisar al actualizar Prisma.
 6. **Más gestión de eventos**: editar, cancelar con reintegros, imagen, cierre de venta.

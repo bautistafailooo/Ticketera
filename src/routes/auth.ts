@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import {
@@ -11,6 +12,8 @@ import {
 } from "../auth.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { sendPasswordReset } from "../mail/messages.js";
+import { sendInBackground } from "../mail/transport.js";
 import { rateLimits } from "../security.js";
 
 export const authRouter = Router();
@@ -64,4 +67,56 @@ authRouter.get("/me", async (req, res) => {
   const user = await currentUser(req);
   if (!user) throw new HttpError(401, "Tenés que iniciar sesión");
   res.json(publicUser(user));
+});
+
+// --- Olvidé mi contraseña ---
+
+const RESET_MINUTES = 60;
+const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+
+const forgotSchema = z.object({ email });
+const resetSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(8, "Tiene que tener al menos 8 caracteres").max(200),
+});
+
+// Siempre responde lo mismo, exista o no la cuenta, para no revelar qué emails están registrados.
+authRouter.post("/forgot", rateLimits.forgotPassword, rateLimits.forgotPasswordPerEmail, async (req, res) => {
+  const { email } = forgotSchema.parse(req.body);
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (user) {
+    const token = randomBytes(32).toString("base64url");
+    await prisma.passwordReset.create({
+      data: {
+        tokenHash: hashToken(token),
+        userId: user.id,
+        expiresAt: new Date(Date.now() + RESET_MINUTES * 60 * 1000),
+      },
+    });
+    sendInBackground("olvidé mi contraseña", () => sendPasswordReset(user, token));
+  }
+  res.json({ ok: true });
+});
+
+authRouter.post("/reset", rateLimits.forgotPassword, async (req, res) => {
+  const { token, password } = resetSchema.parse(req.body);
+  const reset = await prisma.passwordReset.findUnique({ where: { tokenHash: hashToken(token) } });
+  if (!reset || reset.usedAt || reset.expiresAt < new Date()) {
+    throw new HttpError(400, "El link venció o ya se usó. Pedí uno nuevo.");
+  }
+  const passwordHash = await hashPassword(password);
+  await prisma.$transaction(async (tx) => {
+    // Se marca como usado solo si nadie lo usó en paralelo.
+    const used = await tx.passwordReset.updateMany({
+      where: { id: reset.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    if (used.count === 0) throw new HttpError(400, "El link venció o ya se usó. Pedí uno nuevo.");
+    await tx.user.update({ where: { id: reset.userId }, data: { passwordHash } });
+    // Invalida los demás links pendientes y cierra todas las sesiones abiertas.
+    await tx.passwordReset.updateMany({ where: { userId: reset.userId, usedAt: null }, data: { usedAt: new Date() } });
+    await tx.session.deleteMany({ where: { userId: reset.userId } });
+  });
+  await startSession(res, reset.userId);
+  res.json({ ok: true });
 });

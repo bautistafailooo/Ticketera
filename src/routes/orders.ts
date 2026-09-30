@@ -6,6 +6,8 @@ import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { expireOrders } from "../orders.js";
 import { rateLimits } from "../security.js";
+import { sendOrderConfirmation } from "../mail/messages.js";
+import { sendInBackground } from "../mail/transport.js";
 import { generateTicketCode } from "../ticket-code.js";
 
 export const ordersRouter = Router();
@@ -98,6 +100,9 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
     });
   });
 
+  // Las entradas gratis quedan pagas al instante: se mandan por mail en el momento.
+  if (order.status === "PAID") sendInBackground("entradas", () => sendOrderConfirmation(order.id));
+
   res.status(201).json({
     id: order.id,
     accessToken: order.accessToken,
@@ -163,5 +168,15 @@ ordersRouter.post("/:id/simulate-payment", async (req, res) => {
   if (paid.count === 0) {
     throw new HttpError(409, order.status === "PAID" ? "La orden ya está paga" : "La orden venció o ya no está pendiente");
   }
+  sendInBackground("entradas", () => sendOrderConfirmation(order.id));
   res.json({ ok: true });
+});
+
+// Reenvía las entradas al mail del comprador (por si no le llegó o lo borró).
+ordersRouter.post("/:id/resend-email", rateLimits.resendTickets, async (req, res) => {
+  const order = await findOrderWithToken(req);
+  if (order.status !== "PAID") throw new HttpError(409, "La orden todavía no está paga");
+  await sendOrderConfirmation(order.id);
+  res.json({ ok: true, email: order.buyerEmail });
+
 });

@@ -34,7 +34,8 @@ export async function expireOrders(now = new Date()) {
   return expired;
 }
 
-// Borra sesiones vencidas.
+// Borra sesiones y links de "olvidé mi contraseña" vencidos.
 export async function cleanupSessions(now = new Date()) {
   await prisma.session.deleteMany({ where: { expiresAt: { lt: now } } });
+  await prisma.passwordReset.deleteMany({ where: { expiresAt: { lt: now } } });
 }

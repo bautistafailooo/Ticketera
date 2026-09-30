@@ -21,6 +21,7 @@ function setMode(newMode) {
   nameInput.required = mode === "register";
   password.autocomplete = mode === "login" ? "current-password" : "new-password";
   document.getElementById("password-hint").hidden = mode === "login";
+  document.getElementById("forgot-link-row").hidden = mode !== "login";
   submit.textContent = mode === "login" ? "Ingresar" : "Crear cuenta";
   message.textContent = "";
 }
@@ -41,5 +42,43 @@ document.getElementById("form").addEventListener("submit", async (e) => {
   } catch (err) {
     message.textContent = err.message;
     submit.disabled = false;
+  }
+});
+
+// --- Olvidé mi contraseña ---
+const form = document.getElementById("form");
+const forgotForm = document.getElementById("forgot-form");
+const tabs = document.querySelector(".tabs");
+
+function showForgot(show) {
+  forgotForm.hidden = !show;
+  form.hidden = show;
+  tabs.hidden = show;
+  if (show) {
+    document.getElementById("forgot-email").value = document.getElementById("email").value;
+    document.getElementById("forgot-email").focus();
+  }
+}
+document.getElementById("forgot-link").addEventListener("click", () => showForgot(true));
+document.getElementById("back-to-login").addEventListener("click", () => showForgot(false));
+
+forgotForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = document.getElementById("forgot-message");
+  const button = forgotForm.querySelector("button[type=submit]");
+  button.disabled = true;
+  message.className = "";
+  message.textContent = "";
+  try {
+    await api("/auth/forgot", {
+      method: "POST",
+      body: JSON.stringify({ email: document.getElementById("forgot-email").value }),
+    });
+    message.className = "success";
+    message.textContent = "Listo. Si hay una cuenta con ese email, te llega un link en unos minutos. Revisá también el spam.";
+  } catch (err) {
+    message.className = "error";
+    message.textContent = err.message;
+    button.disabled = false;
   }
 });

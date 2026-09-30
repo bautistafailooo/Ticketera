@@ -3,6 +3,8 @@ import { z } from "zod";
 import { requireAdmin, userOf } from "../auth.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { notifyOrganizer } from "../mail/messages.js";
+import { sendInBackground } from "../mail/transport.js";
 import type { EventStatus } from "../../generated/prisma/client.js";
 
 // Administración de la plataforma: revisión de eventos y confianza en organizadores.
@@ -53,12 +55,14 @@ async function transition(eventId: string, from: EventStatus, to: EventStatus, n
 
 adminRouter.post("/events/:id/approve", async (req, res) => {
   await transition(req.params.id, "PENDING_REVIEW", "PUBLISHED", null);
+  sendInBackground("evento aprobado", () => notifyOrganizer(req.params.id, "approved"));
   res.json({ ok: true });
 });
 
 adminRouter.post("/events/:id/reject", async (req, res) => {
   const { note } = noteSchema.parse(req.body);
   await transition(req.params.id, "PENDING_REVIEW", "REJECTED", note);
+  sendInBackground("evento rechazado", () => notifyOrganizer(req.params.id, "rejected"));
   res.json({ ok: true });
 });
 
@@ -66,11 +70,13 @@ adminRouter.post("/events/:id/reject", async (req, res) => {
 adminRouter.post("/events/:id/pause", async (req, res) => {
   const { note } = noteSchema.parse(req.body);
   await transition(req.params.id, "PUBLISHED", "PAUSED", note);
+  sendInBackground("evento pausado", () => notifyOrganizer(req.params.id, "paused"));
   res.json({ ok: true });
 });
 
 adminRouter.post("/events/:id/resume", async (req, res) => {
   await transition(req.params.id, "PAUSED", "PUBLISHED", null);
+  sendInBackground("evento reactivado", () => notifyOrganizer(req.params.id, "resumed"));
   res.json({ ok: true });
 });
 

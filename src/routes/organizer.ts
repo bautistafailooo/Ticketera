@@ -6,6 +6,8 @@ import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { canEdit, isTrusted, visibility } from "../events.js";
 import { MAX_IMAGE_BYTES, deleteImage, detectImageType, saveImage } from "../images.js";
+import { notifyAdminsPendingReview } from "../mail/messages.js";
+import { sendInBackground } from "../mail/transport.js";
 import { expireOrders } from "../orders.js";
 
 // Rutas del panel del organizador: requieren sesión y solo acceden a sus eventos.
@@ -232,6 +234,9 @@ organizerRouter.post("/events/:id/publish", async (req, res) => {
     data: { status },
   });
   if (updated.count === 0) throw new HttpError(409, "El evento cambió de estado. Recargá la página.");
+  if (status === "PENDING_REVIEW") {
+    sendInBackground("evento para revisar", () => notifyAdminsPendingReview(event.id));
+  }
   res.json({ status });
 });
 

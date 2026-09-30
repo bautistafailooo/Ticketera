@@ -40,8 +40,19 @@
           <label for="password">Contraseña</label>
           <input id="password" type="password" required minlength="8" maxlength="200" autocomplete="current-password">
           <p class="field-hint" id="password-hint" hidden>Al menos 8 caracteres.</p>
-          <button type="submit" id="submit" class="btn btn-gradient btn-block" style="margin-top: 24px">Ingresar</button>
+          <p style="margin: 10px 0 0; text-align: right" id="forgot-link-row"><button type="button" class="link-button small" id="forgot-link">¿Olvidaste tu contraseña?</button></p>
+          <button type="submit" id="submit" class="btn btn-gradient btn-block" style="margin-top: 20px">Ingresar</button>
           <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
+        </form>
+
+        <form id="forgot-form" hidden>
+          <h2 style="margin-top: 8px">Recuperar contraseña</h2>
+          <p class="muted small">Te mandamos un link para elegir una contraseña nueva.</p>
+          <label for="forgot-email">Email de tu cuenta</label>
+          <input id="forgot-email" type="email" required maxlength="200" autocomplete="email">
+          <button type="submit" class="btn btn-gradient btn-block" style="margin-top: 20px">Mandarme el link</button>
+          <p id="forgot-message" role="alert" style="margin: 12px 0 0"></p>
+          <p style="margin: 12px 0 0; text-align: center"><button type="button" class="link-button small" id="back-to-login">← Volver a ingresar</button></p>
         </form>
       </div>
     </div>

@@ -53,6 +53,15 @@ export const rateLimits = {
   ),
   // Compras por IP: evita que alguien bloquee el cupo creando órdenes sin parar.
   orders: limiter(10, 20, "Hiciste demasiadas compras seguidas. Esperá unos minutos."),
+  // "Olvidé mi contraseña": por IP y por email, para no usarlo para mandar spam.
+  forgotPassword: limiter(15, 5, TOO_MANY),
+  forgotPasswordPerEmail: limiter(60, 3, TOO_MANY, (req) =>
+    `forgot:${String(req.body?.email ?? "").trim().toLowerCase()}`,
+  ),
+  // Reenvío de entradas por mail: pocas veces por orden.
+  resendTickets: limiter(60, 3, "Ya te reenviamos las entradas varias veces. Probá más tarde.", (req) =>
+    `resend:${String(req.params?.id ?? "")}`,
+  ),
   // Validaciones de puerta por link: una puerta con mucho movimiento hace ~1 por segundo.
   door: limiter(1, 120, TOO_MANY, (req) => `door:${req.header("x-door-token") ?? ipKeyGenerator(req.ip ?? "")}`),
 };

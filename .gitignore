@@ -19,3 +19,7 @@ uploads/
 test-uploads/
 demo.db
 demo-uploads/
+
+# Mails de prueba guardados localmente
+mail-outbox/
+demo-outbox/
