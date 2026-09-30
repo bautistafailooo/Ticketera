@@ -8,6 +8,7 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
+import { createServer } from "node:net";
 import "dotenv/config";
 
 const PORT = process.env.PORT ?? "3000";
@@ -43,6 +44,20 @@ function stopAll(code = 0, reason = "") {
 }
 process.on("SIGINT", () => stopAll(0, "Cerrado con Ctrl+C."));
 process.on("SIGTERM", () => stopAll(0, "Cerrado."));
+
+// Antes de abrir el túnel, que el puerto esté libre (si no, ecko ya está abierto en otra terminal).
+await new Promise((resolve) => {
+  const probe = createServer();
+  probe.once("error", () => {
+    console.error(
+      `\nEl puerto ${PORT} ya está en uso: probablemente ecko ya está abierto en otra terminal ` +
+        `(por ejemplo con "npm run dev").\nCerralo con Ctrl+C en esa terminal (o cerrá esa pestaña) y volvé a correr "npm run tunel".\n`,
+    );
+    process.exit(1);
+  });
+  probe.once("listening", () => probe.close(resolve));
+  probe.listen(Number(PORT));
+});
 
 console.log("Abriendo el túnel de Cloudflare…");
 const tunnel = spawn(CLOUDFLARED, ["tunnel", "--no-autoupdate", "--url", `http://localhost:${PORT}`], {
@@ -84,7 +99,7 @@ const timeout = setTimeout(() => {
   } else {
     stopAll(1, "Cloudflare no respondió con una dirección. Revisá tu conexión a internet y probá de nuevo.");
   }
-}, 45_000);
+}, 30_000);
 
 function onTunnelOutput(chunk) {
   const text = chunk.toString();
@@ -93,7 +108,8 @@ function onTunnelOutput(chunk) {
     publicUrl = match[0];
     console.log("Dirección asignada, esperando a que el túnel conecte…");
   }
-  if (/Registered tunnel connection/i.test(text)) start();
+  // El texto exacto cambia entre versiones de cloudflared.
+  if (/registered tunnel connection|connection [\w-]+ registered|connIndex=\d+.*(registered|location=)/i.test(text)) start();
 }
 tunnel.stdout.on("data", onTunnelOutput);
 tunnel.stderr.on("data", onTunnelOutput);

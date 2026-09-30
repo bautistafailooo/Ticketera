@@ -26,7 +26,19 @@ if (config.isProduction) {
   if (config.sitePassword) console.log("Sitio en modo privado: pide contraseña para entrar.");
 }
 
-const server = createApp().listen(config.port, () => {
+// En Express 5, si el puerto no se puede usar el error llega a este callback (no se lanza).
+const server = createApp().listen(config.port, (error?: Error & { code?: string }) => {
+  if (error) {
+    if (error.code === "EADDRINUSE") {
+      console.error(
+        `\nEl puerto ${config.port} ya está en uso: probablemente ecko ya está abierto en otra terminal ` +
+          `(por ejemplo con "npm run dev"). Cerralo con Ctrl+C en esa terminal y probá de nuevo.\n`,
+      );
+    } else {
+      console.error("No se pudo arrancar el servidor:", error);
+    }
+    process.exit(1);
+  }
   console.log(`ecko escuchando en http://localhost:${config.port}`);
   if (config.simulatedPayments) {
     console.log("Pagos simulados activados: las compras se pueden confirmar sin cobrar.");
