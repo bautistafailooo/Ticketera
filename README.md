@@ -1,4 +1,4 @@
-# Ticketera
+# ecko
 
 Plataforma para vender entradas a eventos: cartelera con flyers, compra con QR, panel para organizadores, administración y app de puerta para validar entradas. Diseño oscuro pensado primero para el celular.
 

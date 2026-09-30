@@ -2,13 +2,13 @@
 
 // Nombre y lema del sitio: cambiarlos acá los cambia en todas las páginas.
 export const SITE = {
-  name: "Ticketera",
+  name: "ecko",
   tagline: "Las mejores fechas, en un solo lugar.",
 };
 
 // Aplica el nombre del sitio al logo, al pie y al título de la pestaña.
 for (const el of document.querySelectorAll("[data-site-name]")) el.textContent = SITE.name;
-document.title = document.title.replace("Ticketera", SITE.name);
+document.title = document.title.replace("ecko", SITE.name);
 
 const priceFormatter = new Intl.NumberFormat("es-AR", {
   style: "currency",

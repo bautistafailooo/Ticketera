@@ -1,5 +1,5 @@
 /* ================================================================
-   Ticketera — tema oscuro
+   ecko — tema oscuro
    ================================================================ */
 
 :root {
@@ -111,8 +111,8 @@ main.container { padding-top: 32px; padding-bottom: 64px; }
 .logo {
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 1.45rem;
-  letter-spacing: -0.02em;
+  font-size: 1.8rem;
+  letter-spacing: -0.04em;
   background: var(--gradient);
   -webkit-background-clip: text;
   background-clip: text;

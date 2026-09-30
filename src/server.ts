@@ -3,7 +3,7 @@ import { config } from "./config.js";
 import { cleanupSessions, expireOrders } from "./orders.js";
 
 createApp().listen(config.port, () => {
-  console.log(`Ticketera escuchando en http://localhost:${config.port}`);
+  console.log(`ecko escuchando en http://localhost:${config.port}`);
   if (config.simulatedPayments) {
     console.log("Pagos simulados activados: las compras se pueden confirmar sin cobrar.");
   }
