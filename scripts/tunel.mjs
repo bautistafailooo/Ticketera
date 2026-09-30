@@ -62,20 +62,38 @@ tunnel.on("exit", (code, signal) => {
   stopAll(1, `El túnel de Cloudflare se cerró solo (código ${code ?? signal}). Revisá tu conexión a internet.`);
 });
 
+// cloudflared primero anuncia la dirección y unos segundos después conecta el túnel.
+// Si se abre la dirección antes de que conecte, Cloudflare muestra el error 1033:
+// por eso ecko se anuncia recién cuando aparece "Registered tunnel connection".
+let publicUrl = null;
 let started = false;
-const timeout = setTimeout(() => {
-  if (!started) {
-    console.error("Cloudflare no respondió con una dirección. Revisá tu conexión y probá de nuevo.");
-    stopAll(1);
-  }
-}, 60_000);
 
-function onTunnelOutput(chunk) {
-  const match = chunk.toString().match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
-  if (!match || started) return;
+function start() {
+  if (started || !publicUrl) return;
   started = true;
   clearTimeout(timeout);
-  startServer(match[0]);
+  startServer(publicUrl);
+}
+
+const timeout = setTimeout(() => {
+  if (started) return;
+  if (publicUrl) {
+    // La dirección ya está pero no confirmó la conexión: se arranca igual y se avisa.
+    console.log("Cloudflare tarda en confirmar la conexión. Si el link da error 1033, esperá un minuto y recargá.");
+    start();
+  } else {
+    stopAll(1, "Cloudflare no respondió con una dirección. Revisá tu conexión a internet y probá de nuevo.");
+  }
+}, 45_000);
+
+function onTunnelOutput(chunk) {
+  const text = chunk.toString();
+  const match = text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+  if (match && !publicUrl) {
+    publicUrl = match[0];
+    console.log("Dirección asignada, esperando a que el túnel conecte…");
+  }
+  if (/Registered tunnel connection/i.test(text)) start();
 }
 tunnel.stdout.on("data", onTunnelOutput);
 tunnel.stderr.on("data", onTunnelOutput);
