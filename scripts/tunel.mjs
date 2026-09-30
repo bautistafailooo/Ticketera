@@ -32,12 +32,17 @@ const CLOUDFLARED = findCloudflared();
 const SITE_PASSWORD = process.env.SITE_PASSWORD || randomBytes(6).toString("hex");
 
 const children = [];
-function stopAll(code = 0) {
+let stopping = false;
+function stopAll(code = 0, reason = "") {
+  if (stopping) return;
+  stopping = true;
+  if (reason) console.log(`\n${reason}`);
+  console.log("ecko y el túnel quedaron cerrados. Para volver a abrirlos: npm run tunel");
   for (const child of children) child.kill();
   process.exit(code);
 }
-process.on("SIGINT", () => stopAll(0));
-process.on("SIGTERM", () => stopAll(0));
+process.on("SIGINT", () => stopAll(0, "Cerrado con Ctrl+C."));
+process.on("SIGTERM", () => stopAll(0, "Cerrado."));
 
 console.log("Abriendo el túnel de Cloudflare…");
 const tunnel = spawn(CLOUDFLARED, ["tunnel", "--no-autoupdate", "--url", `http://localhost:${PORT}`], {
@@ -53,9 +58,8 @@ tunnel.on("error", (err) => {
   }
   stopAll(1);
 });
-tunnel.on("exit", (code) => {
-  console.error(`El túnel se cerró (código ${code}).`);
-  stopAll(1);
+tunnel.on("exit", (code, signal) => {
+  stopAll(1, `El túnel de Cloudflare se cerró solo (código ${code ?? signal}). Revisá tu conexión a internet.`);
 });
 
 let started = false;
@@ -89,7 +93,9 @@ function startServer(publicUrl) {
     },
   });
   children.push(server);
-  server.on("exit", (code) => stopAll(code ?? 0));
+  server.on("exit", (code, signal) => {
+    stopAll(code || 1, `ecko se cerró (código ${code ?? signal}). Si arriba aparece un error, copialo con clic derecho.`);
+  });
 
   const line = "─".repeat(60);
   console.log(`
@@ -101,7 +107,8 @@ ${line}
 
   Pasale los dos datos a quien quieras que pruebe.
   La dirección cambia cada vez que corrés "npm run tunel".
-  Para cerrar: Ctrl+C
+  Dejá esta ventana abierta. Para copiar texto usá clic derecho:
+  Ctrl+C acá cierra ecko.
 ${line}
 `);
 }
