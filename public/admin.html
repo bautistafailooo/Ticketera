@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Evento · Panel · Ticketera</title>
+  <title>Administración · Ticketera</title>
   <link rel="icon" href="/favicon.svg">
   <link rel="stylesheet" href="/styles.css">
 </head>
@@ -21,13 +21,14 @@
   </header>
 
   <main class="container">
-    <p class="notice" id="pending-notice" hidden>
-      Tu cuenta está pendiente de aprobación. Ya podés preparar tus eventos; vas a poder publicarlos cuando un administrador la apruebe.
-    </p>
-    <a class="back" href="/panel.html">← Mis eventos</a>
-    <div id="content"><p class="muted">Cargando…</p></div>
+    <h1>Organizadores</h1>
+    <p class="muted">Solo los organizadores aprobados pueden publicar eventos y vender entradas. Si le quitás la aprobación a alguien, sus eventos salen de la cartelera.</p>
+    <section class="card">
+      <div id="content"><p class="muted">Cargando…</p></div>
+      <p id="message" class="error" role="alert"></p>
+    </section>
   </main>
 
-  <script type="module" src="/js/panel-evento.js"></script>
+  <script type="module" src="/js/admin.js"></script>
 </body>
 </html>

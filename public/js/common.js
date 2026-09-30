@@ -31,10 +31,11 @@ export function formatDate(iso) {
   return dateFormatter.format(new Date(iso));
 }
 
+const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+// Escapa texto para insertarlo en HTML, también dentro de atributos.
 export function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text ?? "";
-  return div.innerHTML;
+  return String(text ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
 
 export async function api(path, options = {}) {
@@ -57,6 +58,17 @@ export async function requireLogin() {
   }
 }
 
+// Completa el encabezado de las páginas del panel y devuelve el usuario logueado.
+export async function setupPanelPage() {
+  const user = await requireLogin();
+  document.getElementById("user-name").textContent = user.name;
+  document.getElementById("logout").addEventListener("click", logout);
+  document.getElementById("admin-link").hidden = user.role !== "ADMIN";
+  const notice = document.getElementById("pending-notice");
+  if (notice) notice.hidden = user.approved;
+  return user;
+}
+
 export async function logout() {
   await api("/auth/logout", { method: "POST" });
   location.href = "/login.html";
@@ -67,10 +79,30 @@ export function argentinaDate(localValue) {
   return new Date(`${localValue}:00-03:00`).toISOString();
 }
 
-// Convierte un monto en pesos escrito por el usuario (ej. "35000" o "35.000,50") a centavos.
+// Convierte un monto en pesos escrito por el usuario a centavos. Acepta "35000",
+// "35.000", "35.000,50", "35000,5" y también "1500.50" (punto como decimal).
 export function pesosToCents(text) {
-  const normalized = String(text).trim().replace(/\./g, "").replace(",", ".");
-  const value = Number(normalized);
-  if (!Number.isFinite(value) || value < 0) throw new Error("Precio inválido");
-  return Math.round(value * 100);
+  let normalized = String(text).trim().replace(/\s|\$/g, "");
+  if (normalized.includes(",")) {
+    // Formato argentino: puntos de miles y coma decimal.
+    normalized = normalized.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(normalized)) {
+    // Solo puntos de miles: "35.000" o "1.500.000".
+    normalized = normalized.replace(/\./g, "");
+  }
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) {
+    throw new Error("Precio inválido. Escribilo como 35000 o 35.000,50");
+  }
+  return Math.round(Number(normalized) * 100);
+}
+
+// Destino seguro después del login: solo páginas de este mismo sitio.
+export function safeNext(next, fallback) {
+  if (!next) return fallback;
+  try {
+    const url = new URL(next, location.origin);
+    return url.origin === location.origin ? url.pathname + url.search + url.hash : fallback;
+  } catch {
+    return fallback;
+  }
 }

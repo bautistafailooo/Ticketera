@@ -4,22 +4,26 @@ import { z } from "zod";
 import { requireUser, userOf } from "../auth.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { expireOrders } from "../orders.js";
 
 // Rutas del panel del organizador: requieren sesión y solo acceden a sus eventos.
 export const organizerRouter = Router();
 organizerRouter.use(requireUser);
 
+const inTheFuture = (date: Date) => date.getTime() > Date.now();
+
 const createEventSchema = z.object({
-  name: z.string().trim().min(1),
-  description: z.string().trim().optional(),
-  venue: z.string().trim().min(1),
-  startsAt: z.coerce.date(),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(2000).optional(),
+  venue: z.string().trim().min(1).max(200),
+  startsAt: z.coerce.date().refine(inTheFuture, "Tiene que ser una fecha futura"),
 });
 
 const createTicketTypeSchema = z.object({
-  name: z.string().trim().min(1),
-  priceCents: z.number().int().nonnegative(),
-  capacity: z.number().int().positive(),
+  name: z.string().trim().min(1).max(60),
+  // Hasta $100.000.000 por entrada.
+  priceCents: z.number().int().nonnegative().max(10_000_000_000),
+  capacity: z.number().int().positive().max(1_000_000),
 });
 
 async function findOwnEvent(eventId: string, organizerId: string) {
@@ -31,13 +35,14 @@ async function findOwnEvent(eventId: string, organizerId: string) {
   return event;
 }
 
-// Entradas pagas y validadas por tipo de entrada, para calcular ventas y recaudación.
+// Entradas pagas, recaudación y entradas validadas por tipo de entrada.
 async function ticketStats(ticketTypeIds: string[]) {
   const [paid, checkedIn] = await Promise.all([
     prisma.ticket.groupBy({
       by: ["ticketTypeId"],
       where: { ticketTypeId: { in: ticketTypeIds }, order: { status: "PAID" } },
       _count: true,
+      _sum: { priceCents: true },
     }),
     prisma.ticket.groupBy({
       by: ["ticketTypeId"],
@@ -45,44 +50,51 @@ async function ticketStats(ticketTypeIds: string[]) {
       _count: true,
     }),
   ]);
-  const toMap = (rows: { ticketTypeId: string; _count: number }[]) =>
-    new Map(rows.map((r) => [r.ticketTypeId, r._count]));
-  return { paid: toMap(paid), checkedIn: toMap(checkedIn) };
+  return {
+    paid: new Map(paid.map((r) => [r.ticketTypeId, { count: r._count, revenueCents: r._sum.priceCents ?? 0 }])),
+    checkedIn: new Map(checkedIn.map((r) => [r.ticketTypeId, r._count])),
+  };
 }
 
 type TicketTypeRow = { id: string; name: string; priceCents: number; capacity: number; sold: number };
 
-function withStats(
-  ticketTypes: TicketTypeRow[],
-  stats: Awaited<ReturnType<typeof ticketStats>>,
-) {
+function withStats(ticketTypes: TicketTypeRow[], stats: Awaited<ReturnType<typeof ticketStats>>) {
   const rows = ticketTypes.map((t) => {
-    const paid = stats.paid.get(t.id) ?? 0;
+    const paid = stats.paid.get(t.id);
     return {
       ...t,
-      paid,
+      paid: paid?.count ?? 0,
       checkedIn: stats.checkedIn.get(t.id) ?? 0,
-      revenueCents: paid * t.priceCents,
+      // Se suma el precio de cada entrada al momento de la compra.
+      revenueCents: paid?.revenueCents ?? 0,
     };
   });
+  const sum = (key: "capacity" | "sold" | "paid" | "checkedIn" | "revenueCents") =>
+    rows.reduce((total, t) => total + t[key], 0);
   const totals = {
-    capacity: rows.reduce((sum, t) => sum + t.capacity, 0),
-    sold: rows.reduce((sum, t) => sum + t.sold, 0),
-    paid: rows.reduce((sum, t) => sum + t.paid, 0),
-    checkedIn: rows.reduce((sum, t) => sum + t.checkedIn, 0),
-    revenueCents: rows.reduce((sum, t) => sum + t.revenueCents, 0),
+    capacity: sum("capacity"),
+    sold: sum("sold"),
+    paid: sum("paid"),
+    checkedIn: sum("checkedIn"),
+    revenueCents: sum("revenueCents"),
   };
   return { ticketTypes: rows, totals };
 }
 
 organizerRouter.get("/events", async (_req, res) => {
+  await expireOrders();
   const events = await prisma.event.findMany({
     where: { organizerId: userOf(res).id },
     orderBy: { startsAt: "asc" },
     include: { ticketTypes: true },
   });
   const stats = await ticketStats(events.flatMap((e) => e.ticketTypes.map((t) => t.id)));
-  res.json(events.map((event) => ({ ...event, ...withStats(event.ticketTypes, stats) })));
+  res.json(
+    events.map(({ doorToken: _doorToken, ...event }) => ({
+      ...event,
+      ...withStats(event.ticketTypes, stats),
+    })),
+  );
 });
 
 organizerRouter.post("/events", async (req, res) => {
@@ -94,13 +106,22 @@ organizerRouter.post("/events", async (req, res) => {
 });
 
 organizerRouter.get("/events/:id", async (req, res) => {
+  await expireOrders();
   const event = await findOwnEvent(req.params.id, userOf(res).id);
   const stats = await ticketStats(event.ticketTypes.map((t) => t.id));
   const orders = await prisma.order.findMany({
-    where: { tickets: { some: { ticketType: { eventId: event.id } } } },
+    where: { eventId: event.id },
     orderBy: { createdAt: "desc" },
     take: 20,
-    include: { _count: { select: { tickets: true } } },
+    select: {
+      id: true,
+      buyerName: true,
+      buyerEmail: true,
+      status: true,
+      totalCents: true,
+      createdAt: true,
+      _count: { select: { tickets: true } },
+    },
   });
   res.json({ ...event, ...withStats(event.ticketTypes, stats), orders });
 });
@@ -118,11 +139,16 @@ organizerRouter.post("/events/:id/ticket-types", async (req, res) => {
 });
 
 organizerRouter.post("/events/:id/publish", async (req, res) => {
-  const event = await findOwnEvent(req.params.id, userOf(res).id);
+  const user = userOf(res);
+  const event = await findOwnEvent(req.params.id, user.id);
+  if (!user.approvedAt) {
+    throw new HttpError(403, "Tu cuenta todavía no fue aprobada. Podés publicar cuando un administrador la apruebe.");
+  }
   if (event.status !== "DRAFT") throw new HttpError(409, "El evento ya fue publicado");
   if (event.ticketTypes.length === 0) {
     throw new HttpError(409, "El evento necesita al menos un tipo de entrada");
   }
+  if (!inTheFuture(event.startsAt)) throw new HttpError(409, "El evento ya pasó");
   const updated = await prisma.event.update({
     where: { id: event.id },
     data: { status: "PUBLISHED" },

@@ -17,6 +17,12 @@ enum OrderStatus {
   PENDING
   PAID
   CANCELLED
+  EXPIRED
+}
+
+enum UserRole {
+  ORGANIZER
+  ADMIN
 }
 
 model User {
@@ -24,6 +30,9 @@ model User {
   email        String    @unique
   name         String
   passwordHash String
+  role         UserRole  @default(ORGANIZER)
+  // Un organizador solo puede publicar eventos una vez aprobado por un administrador.
+  approvedAt   DateTime?
   createdAt    DateTime  @default(now())
   events       Event[]
   sessions     Session[]
@@ -51,6 +60,7 @@ model Event {
   doorToken   String?      @unique
   createdAt   DateTime     @default(now())
   ticketTypes TicketType[]
+  orders      Order[]
 }
 
 model TicketType {
@@ -67,13 +77,21 @@ model TicketType {
 }
 
 model Order {
-  id         String      @id @default(cuid())
-  buyerName  String
-  buyerEmail String
-  status     OrderStatus @default(PENDING)
-  totalCents Int
-  createdAt  DateTime    @default(now())
-  tickets    Ticket[]
+  id          String      @id @default(cuid())
+  event       Event       @relation(fields: [eventId], references: [id])
+  eventId     String
+  // Clave secreta para que el comprador vea su orden y sus entradas.
+  accessToken String      @unique
+  buyerName   String
+  buyerEmail  String
+  status      OrderStatus @default(PENDING)
+  totalCents  Int
+  // Si no se paga antes de esta fecha, la orden vence y libera el cupo.
+  expiresAt   DateTime?
+  createdAt   DateTime    @default(now())
+  tickets     Ticket[]
+
+  @@index([status, expiresAt])
 }
 
 model Ticket {
@@ -83,6 +101,8 @@ model Ticket {
   orderId      String
   ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
   ticketTypeId String
+  // Precio al momento de la compra.
+  priceCents   Int
   usedAt       DateTime?
   createdAt    DateTime   @default(now())
 }

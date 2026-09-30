@@ -1,5 +1,8 @@
 import type { ErrorRequestHandler } from "express";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
+import { Prisma } from "../generated/prisma/client.js";
+
+z.config(z.locales.es());
 
 export class HttpError extends Error {
   constructor(
@@ -11,13 +14,43 @@ export class HttpError extends Error {
   }
 }
 
+const FIELD_NAMES: Record<string, string> = {
+  name: "Nombre",
+  email: "Email",
+  password: "Contraseña",
+  buyerName: "Nombre",
+  buyerEmail: "Email",
+  venue: "Lugar",
+  startsAt: "Fecha",
+  description: "Descripción",
+  priceCents: "Precio",
+  capacity: "Cantidad",
+  items: "Entradas",
+  quantity: "Cantidad",
+  code: "Código",
+};
+
+function describeIssue(issue: z.core.$ZodIssue) {
+  const field = issue.path.map(String).find((key) => FIELD_NAMES[key]);
+  return field ? `${FIELD_NAMES[field]}: ${issue.message}` : issue.message;
+}
+
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof ZodError) {
-    res.status(400).json({ error: "Datos inválidos", details: err.issues });
+    res.status(400).json({ error: describeIssue(err.issues[0]), details: err.issues });
     return;
   }
   if (err instanceof HttpError) {
     res.status(err.status).json({ error: err.message, ...err.details });
+    return;
+  }
+  // Errores de express.json (JSON mal formado, cuerpo demasiado grande).
+  if (typeof err?.status === "number" && err.status >= 400 && err.status < 500 && err.expose) {
+    res.status(err.status).json({ error: "Pedido inválido" });
+    return;
+  }
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    res.status(409).json({ error: "Ya existe un registro con esos datos" });
     return;
   }
   console.error(err);

@@ -12,6 +12,8 @@
     <div class="container">
       <a class="logo" href="/">Ticketera</a>
       <nav>
+        <a href="/panel.html">Mis eventos</a>
+        <a href="/admin.html" id="admin-link" hidden>Administración</a>
         <span class="muted" id="user-name"></span>
         <button type="button" class="link-button" id="logout">Salir</button>
       </nav>
@@ -19,6 +21,9 @@
   </header>
 
   <main class="container">
+    <p class="notice" id="pending-notice" hidden>
+      Tu cuenta está pendiente de aprobación. Ya podés preparar tus eventos; vas a poder publicarlos cuando un administrador la apruebe.
+    </p>
     <div class="page-head">
       <h1>Mis eventos</h1>
       <button type="button" id="toggle-new">Nuevo evento</button>
@@ -27,13 +32,13 @@
     <form class="card" id="new-event" hidden>
       <h2>Nuevo evento</h2>
       <label for="name">Nombre</label>
-      <input id="name" required>
+      <input id="name" required maxlength="120">
       <label for="description">Descripción</label>
-      <input id="description">
+      <input id="description" maxlength="2000">
       <div class="form-row">
         <div>
           <label for="venue">Lugar</label>
-          <input id="venue" required>
+          <input id="venue" required maxlength="200">
         </div>
         <div>
           <label for="startsAt">Fecha y hora</label>
@@ -47,65 +52,6 @@
     <div id="events" class="grid"><p class="muted">Cargando…</p></div>
   </main>
 
-  <script type="module">
-    import { api, argentinaDate, escapeHtml, formatDate, formatPrice, logout, requireLogin } from "/common.js";
-
-    const STATUS = { DRAFT: "Borrador", PUBLISHED: "Publicado", CANCELLED: "Cancelado" };
-
-    const user = await requireLogin();
-    document.getElementById("user-name").textContent = user.name;
-    document.getElementById("logout").addEventListener("click", logout);
-
-    const form = document.getElementById("new-event");
-    document.getElementById("toggle-new").addEventListener("click", () => {
-      form.hidden = !form.hidden;
-      if (!form.hidden) document.getElementById("name").focus();
-    });
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const message = document.getElementById("new-message");
-      message.textContent = "";
-      try {
-        const event = await api("/organizer/events", {
-          method: "POST",
-          body: JSON.stringify({
-            name: document.getElementById("name").value,
-            description: document.getElementById("description").value || undefined,
-            venue: document.getElementById("venue").value,
-            startsAt: argentinaDate(document.getElementById("startsAt").value),
-          }),
-        });
-        location.href = `/panel-evento.html?id=${encodeURIComponent(event.id)}`;
-      } catch (err) {
-        message.textContent = err.message;
-      }
-    });
-
-    const container = document.getElementById("events");
-    try {
-      const events = await api("/organizer/events");
-      if (events.length === 0) {
-        container.innerHTML = '<p class="muted">Todavía no creaste eventos. Tocá “Nuevo evento” para empezar.</p>';
-        form.hidden = false;
-      } else {
-        container.innerHTML = events.map((event) => {
-          const { capacity, sold, revenueCents } = event.totals;
-          const percent = capacity ? Math.round((sold / capacity) * 100) : 0;
-          return `
-            <a class="card" href="/panel-evento.html?id=${encodeURIComponent(event.id)}">
-              <span class="badge ${event.status}">${STATUS[event.status]}</span>
-              <div class="date" style="margin-top: 8px">${escapeHtml(formatDate(event.startsAt))}</div>
-              <h2>${escapeHtml(event.name)}</h2>
-              <div class="muted">${escapeHtml(event.venue)}</div>
-              <p><strong>${sold}</strong> de ${capacity} entradas · <strong>${formatPrice(revenueCents)}</strong> cobrados</p>
-              <div class="progress" aria-label="${percent}% vendido"><span style="width: ${percent}%"></span></div>
-            </a>`;
-        }).join("");
-      }
-    } catch (err) {
-      container.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
-    }
-  </script>
+  <script type="module" src="/js/panel.js"></script>
 </body>
 </html>

@@ -2,13 +2,15 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { rateLimits } from "../security.js";
 import { resolveTicketCode } from "../ticket-code.js";
 
 // App de puerta: se autoriza con la clave del link de puerta del evento
 // (header x-door-token) y solo puede validar entradas de ese evento.
 export const doorRouter = Router();
+doorRouter.use(rateLimits.door);
 
-const checkInSchema = z.object({ code: z.string().trim().min(1) });
+const checkInSchema = z.object({ code: z.string().trim().min(1).max(40) });
 
 async function eventForDoor(req: Request) {
   const token = req.header("x-door-token");
