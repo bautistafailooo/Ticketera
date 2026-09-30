@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ticketera</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div class="container"><a class="logo" href="/">Ticketera</a></div>
+  </header>
+
+  <main class="container">
+    <h1>Próximos eventos</h1>
+    <p class="muted">Elegí un evento para ver las entradas disponibles.</p>
+    <div id="events" class="grid"><p class="muted">Cargando…</p></div>
+  </main>
+
+  <script type="module">
+    import { api, escapeHtml, formatDate, formatPrice } from "/common.js";
+
+    const container = document.getElementById("events");
+
+    try {
+      const events = await api("/events");
+      if (events.length === 0) {
+        container.innerHTML =
+          '<p class="muted">Todavía no hay eventos publicados. Cargá los de ejemplo con <code>npm run db:seed</code>.</p>';
+      } else {
+        container.innerHTML = events.map((event) => {
+          const prices = event.ticketTypes.map((t) => t.priceCents);
+          const from = prices.length ? `Desde ${formatPrice(Math.min(...prices))}` : "";
+          return `
+            <a class="card" href="/evento.html?id=${encodeURIComponent(event.id)}">
+              <div class="date">${escapeHtml(formatDate(event.startsAt))}</div>
+              <h2>${escapeHtml(event.name)}</h2>
+              <div class="muted">${escapeHtml(event.venue)}</div>
+              <p class="price">${from}</p>
+            </a>`;
+        }).join("");
+      }
+    } catch (err) {
+      container.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+    }
+  </script>
+</body>
+</html>

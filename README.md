@@ -10,9 +10,19 @@ Stack: Node.js 22 + TypeScript, Express 5, Prisma 7 (SQLite en desarrollo), Zod 
 cp .env.example .env
 npm install            # también genera el cliente de Prisma
 npm run db:migrate     # crea la base SQLite local (dev.db)
+npm run db:seed        # carga eventos de ejemplo (opcional)
 npm run dev            # http://localhost:3000
 npm test
 ```
+
+## Página web
+
+Con el servidor andando, abrí http://localhost:3000:
+
+- **Cartelera** (`/`): los eventos publicados.
+- **Evento** (`/evento.html?id=...`): tipos de entrada, formulario de compra y, al confirmar, las entradas con su QR.
+
+Son páginas HTML simples en `public/`, sin paso de compilación. El pago todavía es simulado.
 
 ## Modelo de datos
 
@@ -38,6 +48,7 @@ Los precios se guardan en centavos (`priceCents`, `totalCents`) para evitar erro
 | POST   | `/orders`                     | Comprar entradas                               |
 | GET    | `/orders/:id`                 | Ver una orden con sus entradas                 |
 | POST   | `/orders/:id/pay`             | Pago **simulado** (marca la orden como paga)   |
+| GET    | `/tickets/:code/qr.svg`       | Imagen QR de una entrada                       |
 | POST   | `/tickets/:code/check-in`     | Validar una entrada en la puerta               |
 
 Ejemplo de compra:
@@ -62,6 +73,6 @@ curl -X POST localhost:3000/orders -H 'content-type: application/json' -d '{
 1. **Autenticación y roles**: organizadores (crean eventos), compradores y personal de puerta. Hoy los endpoints de administración están abiertos.
 2. **Pagos reales**: integrar Mercado Pago (Checkout Pro + webhook) en lugar de `/orders/:id/pay`.
 3. **Vencimiento de órdenes pendientes**: liberar el cupo si no se pagan en X minutos.
-4. **Entrega de entradas**: generar el QR a partir de `code` y enviarlo por email.
-5. **Frontend**: cartelera, página de evento, checkout y una app de escaneo para la puerta.
+4. **Entrega de entradas**: enviar por email las entradas con su QR.
+5. **Panel del organizador y app de puerta**: crear eventos desde la web y escanear QR para validar.
 6. **Base de datos de producción**: pasar a PostgreSQL (cambiar `provider` y el adapter de Prisma).

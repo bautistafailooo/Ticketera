@@ -1,4 +1,5 @@
 import { Router } from "express";
+import QRCode from "qrcode";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 
@@ -27,4 +28,12 @@ ticketsRouter.post("/:code/check-in", async (req, res) => {
     ticketType: ticket.ticketType.name,
     buyerName: ticket.order.buyerName,
   });
+});
+
+// Imagen QR de la entrada, para mostrar en pantalla o mandar por email.
+ticketsRouter.get("/:code/qr.svg", async (req, res) => {
+  const ticket = await prisma.ticket.findUnique({ where: { code: req.params.code } });
+  if (!ticket) throw new HttpError(404, "Entrada inválida");
+  const svg = await QRCode.toString(ticket.code, { type: "svg", margin: 1 });
+  res.type("image/svg+xml").send(svg);
 });

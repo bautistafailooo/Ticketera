@@ -110,3 +110,19 @@ describe("control de acceso", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("frontend", () => {
+  it("sirve la cartelera", async () => {
+    const res = await request(app).get("/");
+    expect(res.status).toBe(200);
+    expect(res.text).toContain("Próximos eventos");
+  });
+
+  it("genera el QR de una entrada", async () => {
+    const { ticketTypeId } = await createPublishedEvent();
+    const order = await buy(ticketTypeId, 1);
+    const res = await request(app).get(`/tickets/${order.body.tickets[0].code}/qr.svg`);
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("image/svg+xml");
+  });
+});

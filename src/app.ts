@@ -1,3 +1,4 @@
+import path from "node:path";
 import express from "express";
 import { errorHandler } from "./errors.js";
 import { eventsRouter } from "./routes/events.js";
@@ -7,6 +8,7 @@ import { ticketsRouter } from "./routes/tickets.js";
 export function createApp() {
   const app = express();
   app.use(express.json());
+  app.use(express.static(path.join(import.meta.dirname, "../public")));
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true });
