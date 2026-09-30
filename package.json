@@ -3,16 +3,19 @@
   "version": "1.0.0",
   "description": "Ticketera: API para venta de entradas a eventos",
   "scripts": {
+    "predev": "prisma generate",
     "dev": "tsx watch src/server.ts",
+    "prestart": "prisma generate",
     "start": "tsx src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "pretest": "prisma generate",
     "test": "vitest run",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "prisma migrate dev && prisma generate",
     "db:generate": "prisma generate",
-    "postinstall": "prisma generate",
     "db:seed": "tsx src/seed.ts",
-    "make-admin": "tsx src/make-admin.ts"
+    "make-admin": "tsx src/make-admin.ts",
+    "postinstall": "prisma generate"
   },
   "repository": {
     "type": "git",
