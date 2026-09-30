@@ -9,7 +9,7 @@ import { eventsRouter } from "./routes/events.js";
 import { ordersRouter } from "./routes/orders.js";
 import { organizerRouter } from "./routes/organizer.js";
 import { ticketsRouter } from "./routes/tickets.js";
-import { rateLimits, securityHeaders } from "./security.js";
+import { rateLimits, securityHeaders, sitePrivacy } from "./security.js";
 
 // Las respuestas de la API pueden tener datos personales o códigos de entrada:
 // que ningún navegador ni proxy las guarde.
@@ -22,6 +22,7 @@ export function createApp() {
   const app = express();
   app.set("trust proxy", config.trustProxy);
   app.use(securityHeaders);
+  app.use(sitePrivacy);
   app.use(express.json({ limit: "20kb" }));
   app.use(express.static(path.join(import.meta.dirname, "../public")));
   // Flyers de los eventos. Los nombres son aleatorios y no cambian: se pueden cachear.

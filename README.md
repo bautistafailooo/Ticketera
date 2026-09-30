@@ -21,6 +21,8 @@ Para convertir una cuenta existente en administrador: `npm run make-admin -- ema
 
 El nombre y el lema del sitio se cambian en un solo lugar: `SITE` en `public/js/common.js`.
 
+**Para subirla a internet:** ver [DEPLOY.md](DEPLOY.md) (Railway, paso a paso).
+
 ## Páginas
 
 - **Cartelera** (`/`): eventos a la venta.
@@ -85,6 +87,9 @@ Sin `SMTP_URL`, los mails no se envían: se guardan como `.html` en `mail-outbox
 | `PUBLIC_URL`          | `http://localhost:3000`        | Dirección pública del sitio, para los links de los mails       |
 | `SMTP_URL`            | —                              | Servidor de envío de mails, ej. `smtps://usuario:clave@smtp.resend.com:465` |
 | `MAIL_FROM`           | `ecko <no-responder@ecko.local>` | Remitente de los mails                                       |
+| `ADMIN_EMAIL`         | —                              | La cuenta con este email pasa a ser administrador al arrancar el servidor |
+| `SITE_PASSWORD`       | —                              | Si está, todo el sitio pide esta contraseña (modo privado) y no se indexa |
+| `BACKUP_DIR`          | —                              | Carpeta de las copias diarias de la base (se guardan las últimas 7) |
 
 ## Modelo de datos
 

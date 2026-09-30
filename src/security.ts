@@ -1,4 +1,5 @@
-import type { Request } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
+import type { Request, RequestHandler } from "express";
 import helmet from "helmet";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { config } from "./config.js";
@@ -65,3 +66,42 @@ export const rateLimits = {
   // Validaciones de puerta por link: una puerta con mucho movimiento hace ~1 por segundo.
   door: limiter(1, 120, TOO_MANY, (req) => `door:${req.header("x-door-token") ?? ipKeyGenerator(req.ip ?? "")}`),
 };
+
+// --- Sitio privado ---
+// Con SITE_PASSWORD, todo el sitio pide usuario y contraseña del navegador (cualquier usuario
+// sirve, lo que importa es la contraseña). Sirve para tenerlo online sin que entre cualquiera.
+
+const digest = (text: string) => createHash("sha256").update(text).digest();
+
+function passwordFrom(req: Request) {
+  const header = req.headers.authorization ?? "";
+  if (!header.startsWith("Basic ")) return null;
+  const decoded = Buffer.from(header.slice(6), "base64").toString("utf8");
+  const colon = decoded.indexOf(":");
+  return colon === -1 ? null : decoded.slice(colon + 1);
+}
+
+// Cuenta solo los intentos fallidos, para frenar a quien prueba contraseñas.
+const gateFailures = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  skipSuccessfulRequests: true,
+  skip: () => !config.sitePassword || !config.rateLimits,
+  keyGenerator: (req) => `gate:${ipKeyGenerator(req.ip ?? "")}`,
+  handler: (_req, res) => {
+    res.status(429).send("Demasiados intentos. Esperá unos minutos.");
+  },
+});
+
+const privateGate: RequestHandler = (req, res, next) => {
+  const expected = config.sitePassword;
+  if (!expected || req.path === "/health") return next();
+  // Que los buscadores no indexen el sitio mientras es privado.
+  res.set("X-Robots-Tag", "noindex, nofollow");
+  const given = passwordFrom(req);
+  if (given !== null && timingSafeEqual(digest(given), digest(expected))) return next();
+  res.set("WWW-Authenticate", 'Basic realm="ecko (privado)", charset="UTF-8"');
+  res.status(401).send("Sitio en pruebas: pedí la contraseña a quien administra ecko.");
+};
+
+export const sitePrivacy: RequestHandler[] = [gateFailures, privateGate];

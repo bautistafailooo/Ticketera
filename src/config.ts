@@ -25,6 +25,12 @@ export const config = {
   mailOutboxDir: path.resolve(env.MAIL_OUTBOX_DIR ?? "mail-outbox"),
   // "memory" guarda los mails en memoria (tests).
   mailTransport: env.MAIL_TRANSPORT,
+  // La cuenta con este email queda como administrador (al registrarse o al arrancar el servidor).
+  adminEmail: env.ADMIN_EMAIL?.trim().toLowerCase() || undefined,
+  // Si está, todo el sitio pide esta contraseña (para tenerlo online en privado mientras se prueba).
+  sitePassword: env.SITE_PASSWORD || undefined,
+  // Carpeta de las copias de seguridad diarias de la base. Vacío = sin copias.
+  backupDir: env.BACKUP_DIR ? path.resolve(env.BACKUP_DIR) : undefined,
   // Permite desactivar los límites de pedidos en los tests.
   rateLimits: env.RATE_LIMITS !== "off",
 };
