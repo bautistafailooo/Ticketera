@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { requireUser, userOf } from "../auth.js";
@@ -127,4 +128,14 @@ organizerRouter.post("/events/:id/publish", async (req, res) => {
     data: { status: "PUBLISHED" },
   });
   res.json(updated);
+});
+
+// Genera (o regenera) el link de puerta del evento. El link anterior deja de funcionar.
+organizerRouter.post("/events/:id/door-token", async (req, res) => {
+  const event = await findOwnEvent(req.params.id, userOf(res).id);
+  const updated = await prisma.event.update({
+    where: { id: event.id },
+    data: { doorToken: randomBytes(24).toString("base64url") },
+  });
+  res.json({ doorToken: updated.doorToken });
 });

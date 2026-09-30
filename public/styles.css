@@ -250,3 +250,38 @@ td.num, th.num { text-align: right; }
 section + section { margin-top: 24px; }
 .page-head a { color: var(--accent); font-weight: 600; }
 [hidden] { display: none !important; }
+
+/* App de puerta */
+.door { max-width: 520px; margin: 0 auto; }
+.door .counter { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.door video {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #000000;
+  display: block;
+  margin-top: 16px;
+}
+.door .manual { display: flex; gap: 8px; margin-top: 8px; }
+.door .manual input { flex: 1; font-family: ui-monospace, Consolas, monospace; }
+.door .manual button { width: auto; margin: 0; }
+
+.result {
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+  margin-top: 16px;
+  color: #ffffff;
+}
+.result .title { font-size: 1.6rem; font-weight: 800; }
+.result.ok { background: var(--ok); }
+.result.bad { background: var(--error); }
+.result.idle { background: var(--surface); color: var(--muted); border: 1px dashed var(--border); }
+
+.door-link { display: flex; gap: 8px; margin-top: 8px; }
+.door-link input { flex: 1; font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; }
+.door-link button { width: auto; margin: 0; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; align-items: center; }
+.actions button { width: auto; margin: 0; }
+.actions a { color: var(--accent); font-weight: 600; }

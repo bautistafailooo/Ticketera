@@ -21,7 +21,12 @@ Con el servidor andando, abrí http://localhost:3000:
 
 - **Cartelera** (`/`): los eventos publicados.
 - **Evento** (`/evento.html?id=...`): tipos de entrada, formulario de compra y, al confirmar, las entradas con su QR.
+- **App de puerta** (`/puerta.html`): el personal escanea el QR con la cámara (o carga el código a mano) y ve al instante si la entrada es válida, ya fue usada, no está paga o es de otro evento.
 - **Panel del organizador** (`/panel.html`): login y registro, lista de tus eventos con ventas y recaudación, creación de eventos, tipos de entrada, publicación y últimas órdenes.
+
+El organizador genera desde el panel un **link de puerta** por evento. Ese link lleva una clave secreta: quien lo tenga puede validar entradas de ese evento (y de ningún otro), sin crear cuenta. Si se filtra, se regenera y el anterior deja de funcionar.
+
+> La cámara del navegador solo funciona en páginas `https` o en `localhost`. Desde otro dispositivo en tu red local (http://192.168.x.x:3000) se puede cargar el código a mano; la cámara del celular va a andar cuando la ticketera esté publicada con https.
 
 `npm run db:seed` crea un organizador de prueba: **organizador@ticketera.test** / **ticketera123**. Si ya tenías eventos cargados sin organizador, se le asignan a esa cuenta.
 
@@ -53,7 +58,13 @@ Públicos:
 | GET    | `/orders/:id`                 | Ver una orden con sus entradas                 |
 | POST   | `/orders/:id/pay`             | Pago **simulado** (marca la orden como paga)   |
 | GET    | `/tickets/:code/qr.svg`       | Imagen QR de una entrada                       |
-| POST   | `/tickets/:code/check-in`     | Validar una entrada en la puerta               |
+
+App de puerta (requieren el header `x-door-token` con la clave del link de puerta):
+
+| Método | Ruta              | Descripción                                             |
+|--------|-------------------|---------------------------------------------------------|
+| GET    | `/door/event`     | Evento de ese link y contador de ingresos               |
+| POST   | `/door/check-in`  | Validar una entrada: `{ "code": "..." }`                |
 
 Cuentas (la sesión se guarda en una cookie `HttpOnly`):
 
@@ -73,6 +84,7 @@ Organizador (requieren sesión y solo acceden a eventos propios):
 | GET    | `/organizer/events/:id`                | Detalle con estadísticas y últimas órdenes         |
 | POST   | `/organizer/events/:id/ticket-types`   | Agregar un tipo de entrada                         |
 | POST   | `/organizer/events/:id/publish`        | Publicar (requiere al menos un tipo de entrada)    |
+| POST   | `/organizer/events/:id/door-token`     | Generar o regenerar el link de puerta              |
 
 Ejemplo de compra:
 
@@ -89,15 +101,14 @@ curl -X POST localhost:3000/orders -H 'content-type: application/json' -d '{
 - Solo se venden entradas de eventos publicados.
 - No hay sobreventa: el cupo se reserva con una actualización atómica, también con compras simultáneas.
 - Máximo 10 entradas por tipo en una misma compra.
-- Una entrada solo se puede validar si la orden está paga, y una sola vez.
+- Una entrada solo se puede validar si la orden está paga, una sola vez, y con el link de puerta de su propio evento.
 - Solo el organizador dueño de un evento puede verlo en el panel, modificarlo o publicarlo.
 - La recaudación cuenta solo órdenes pagas.
 
 ## Próximos pasos sugeridos
 
 1. **Pagos reales**: integrar Mercado Pago (Checkout Pro + webhook) en lugar de `/orders/:id/pay`.
-2. **App de puerta**: escanear el QR con la cámara del celular y validar con `/tickets/:code/check-in` (hoy ese endpoint está abierto; debería requerir personal autorizado del evento).
+2. **Publicar la ticketera online** con https y PostgreSQL (necesario para Mercado Pago y para usar la cámara del celular en la puerta).
 3. **Vencimiento de órdenes pendientes**: liberar el cupo si no se pagan en X minutos.
 4. **Entrega de entradas**: enviar por email las entradas con su QR.
 5. **Más gestión de eventos**: editar, cancelar, subir imagen, cerrar la venta.
-6. **Base de datos de producción**: pasar a PostgreSQL (cambiar `provider` y el adapter de Prisma).

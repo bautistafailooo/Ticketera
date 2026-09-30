@@ -47,6 +47,8 @@ model Event {
   venue       String
   startsAt    DateTime
   status      EventStatus  @default(DRAFT)
+  // Clave del link de puerta: permite validar entradas de este evento sin cuenta.
+  doorToken   String?      @unique
   createdAt   DateTime     @default(now())
   ticketTypes TicketType[]
 }

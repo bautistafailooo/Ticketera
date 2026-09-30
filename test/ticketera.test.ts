@@ -173,30 +173,93 @@ describe("compras", () => {
   });
 });
 
-describe("control de acceso", () => {
-  it("valida una entrada paga una sola vez", async () => {
-    const { ticketTypeId } = await createPublishedEvent();
+describe("app de puerta", () => {
+  async function doorFor(agent: ReturnType<typeof request.agent>, eventId: string) {
+    const res = await agent.post(`/organizer/events/${eventId}/door-token`);
+    expect(res.status).toBe(200);
+    return res.body.doorToken as string;
+  }
+
+  function checkIn(token: string | undefined, code: string) {
+    const req = request(app).post("/door/check-in").send({ code });
+    return token ? req.set("x-door-token", token) : req;
+  }
+
+  async function paidTicket(ticketTypeId: string) {
     const order = await buy(ticketTypeId, 1);
-    const code = order.body.tickets[0].code;
-
-    expect((await request(app).post(`/tickets/${code}/check-in`)).status).toBe(409);
-
     await request(app).post(`/orders/${order.body.id}/pay`);
-    const first = await request(app).post(`/tickets/${code}/check-in`);
-    expect(first.status).toBe(200);
-    expect(first.body.event).toBe("Recital de prueba");
+    return order.body.tickets[0].code as string;
+  }
 
-    const second = await request(app).post(`/tickets/${code}/check-in`);
+  it("valida una entrada paga una sola vez", async () => {
+    const { agent, eventId, ticketTypeId } = await createPublishedEvent();
+    const token = await doorFor(agent, eventId);
+    const code = await paidTicket(ticketTypeId);
+
+    const first = await checkIn(token, code);
+    expect(first.status).toBe(200);
+    expect(first.body).toMatchObject({ ticketType: "Campo", buyerName: "Ana", stats: { paid: 1, checkedIn: 1 } });
+
+    const second = await checkIn(token, code);
     expect(second.status).toBe(409);
+    expect(second.body.error).toBe("La entrada ya fue usada");
+    expect(second.body.usedAt).toBeTruthy();
   });
 
-  it("rechaza códigos inexistentes", async () => {
-    const res = await request(app).post("/tickets/no-existe/check-in");
-    expect(res.status).toBe(404);
+  it("rechaza entradas sin pagar e inexistentes", async () => {
+    const { agent, eventId, ticketTypeId } = await createPublishedEvent();
+    const token = await doorFor(agent, eventId);
+    const order = await buy(ticketTypeId, 1);
+    expect((await checkIn(token, order.body.tickets[0].code)).status).toBe(409);
+    expect((await checkIn(token, "no-existe")).status).toBe(404);
+  });
+
+  it("exige un link de puerta válido", async () => {
+    const { ticketTypeId } = await createPublishedEvent();
+    const code = await paidTicket(ticketTypeId);
+    expect((await checkIn(undefined, code)).status).toBe(401);
+    expect((await checkIn("cualquiera", code)).status).toBe(401);
+  });
+
+  it("no valida entradas de otro evento", async () => {
+    const a = await createPublishedEvent();
+    const b = await createPublishedEvent();
+    const tokenA = await doorFor(a.agent, a.eventId);
+    const codeB = await paidTicket(b.ticketTypeId);
+    const res = await checkIn(tokenA, codeB);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe("Esta entrada es de otro evento");
+  });
+
+  it("al regenerar el link, el anterior deja de funcionar", async () => {
+    const { agent, eventId, ticketTypeId } = await createPublishedEvent();
+    const oldToken = await doorFor(agent, eventId);
+    const newToken = await doorFor(agent, eventId);
+    const code = await paidTicket(ticketTypeId);
+    expect((await checkIn(oldToken, code)).status).toBe(401);
+    expect((await checkIn(newToken, code)).status).toBe(200);
+  });
+
+  it("solo el organizador dueño genera el link", async () => {
+    const { eventId } = await createPublishedEvent();
+    const other = await organizer("otro@example.com");
+    expect((await other.post(`/organizer/events/${eventId}/door-token`)).status).toBe(404);
+  });
+
+  it("muestra el evento y el contador de ingresos", async () => {
+    const { agent, eventId } = await createPublishedEvent();
+    const token = await doorFor(agent, eventId);
+    const res = await request(app).get("/door/event").set("x-door-token", token);
+    expect(res.body).toMatchObject({ name: "Recital de prueba", stats: { paid: 0, checkedIn: 0 } });
   });
 });
 
 describe("frontend", () => {
+  it("sirve el decodificador de QR", async () => {
+    const res = await request(app).get("/vendor/jsQR.js");
+    expect(res.status).toBe(200);
+  });
+
   it("sirve la cartelera", async () => {
     const res = await request(app).get("/");
     expect(res.status).toBe(200);

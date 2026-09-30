@@ -114,6 +114,23 @@
         </section>
 
         <section class="card">
+          <h2>Control de acceso</h2>
+          ${event.doorToken
+            ? `<p class="muted">Pasale este link al personal de puerta. Con él pueden validar entradas de este evento desde el celular, sin crear una cuenta.</p>
+              <div class="door-link">
+                <input id="door-link" readonly value="${escapeHtml(`${location.origin}/puerta.html#${event.doorToken}`)}" aria-label="Link de puerta">
+                <button type="button" id="copy-door" class="button-secondary">Copiar</button>
+              </div>
+              <div class="actions">
+                <a href="/puerta.html#${encodeURIComponent(event.doorToken)}" target="_blank" rel="noopener">Abrir app de puerta →</a>
+                <button type="button" id="door-token" class="link-button">Regenerar link</button>
+              </div>`
+            : `<p class="muted">Generá un link para que el personal de puerta valide las entradas desde el celular.</p>
+              <div class="actions"><button type="button" id="door-token">Generar link de puerta</button></div>`}
+          <p id="door-message" class="error" role="alert"></p>
+        </section>
+
+        <section class="card">
           <h2>Últimas órdenes</h2>
           ${event.orders.length
             ? `<div class="table-wrap"><table>
@@ -131,6 +148,28 @@
         } catch (err) {
           document.getElementById("publish-message").textContent = err.message;
           e.target.disabled = false;
+        }
+      });
+
+      document.getElementById("copy-door")?.addEventListener("click", async (e) => {
+        const input = document.getElementById("door-link");
+        try {
+          await navigator.clipboard.writeText(input.value);
+        } catch {
+          input.select();
+          document.execCommand("copy");
+        }
+        e.target.textContent = "¡Copiado!";
+        setTimeout(() => (e.target.textContent = "Copiar"), 2000);
+      });
+
+      document.getElementById("door-token").addEventListener("click", async () => {
+        if (event.doorToken && !confirm("El link actual va a dejar de funcionar. ¿Generar uno nuevo?")) return;
+        try {
+          await api(`/organizer/events/${encodeURIComponent(event.id)}/door-token`, { method: "POST" });
+          await load();
+        } catch (err) {
+          document.getElementById("door-message").textContent = err.message;
         }
       });
 
