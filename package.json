@@ -1,0 +1,44 @@
+{
+  "name": "ticketera",
+  "version": "1.0.0",
+  "description": "Ticketera: API para venta de entradas a eventos",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "postinstall": "prisma generate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bautistafailooo/Ticketera.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/bautistafailooo/Ticketera/issues"
+  },
+  "homepage": "https://github.com/bautistafailooo/Ticketera#readme",
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.4",
+    "@types/supertest": "^7.2.1",
+    "prisma": "^7.10.0",
+    "supertest": "^7.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.2"
+  },
+  "type": "module"
+}

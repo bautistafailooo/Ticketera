@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+model Event {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  venue       String
+  startsAt    DateTime
+  status      EventStatus  @default(DRAFT)
+  createdAt   DateTime     @default(now())
+  ticketTypes TicketType[]
+}
+
+model TicketType {
+  id         String   @id @default(cuid())
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId    String
+  name       String
+  priceCents Int
+  capacity   Int
+  sold       Int      @default(0)
+  tickets    Ticket[]
+
+  @@unique([eventId, name])
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  buyerName  String
+  buyerEmail String
+  status     OrderStatus @default(PENDING)
+  totalCents Int
+  createdAt  DateTime    @default(now())
+  tickets    Ticket[]
+}
+
+model Ticket {
+  id           String     @id @default(cuid())
+  code         String     @unique
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId      String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  ticketTypeId String
+  usedAt       DateTime?
+  createdAt    DateTime   @default(now())
+}

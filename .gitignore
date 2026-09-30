@@ -1,0 +1,15 @@
+node_modules
+dist
+# Variables de entorno fuera del control de versiones
+.env
+# Bases SQLite locales
+*.db
+*.db-journal
+
+/generated/prisma
+
+# Archivos agregados por `prisma init` que no son parte del proyecto
+.agents/
+.windsurf/
+.claude/skills/
+skills-lock.json
