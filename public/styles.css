@@ -181,3 +181,72 @@ button:disabled { opacity: 0.6; cursor: wait; }
   font-size: 0.85rem;
   word-break: break-all;
 }
+
+header nav { margin-left: auto; display: flex; gap: 16px; align-items: center; }
+header nav a, .link-button {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+header nav a:hover, .link-button:hover { color: var(--text); }
+
+.narrow { max-width: 420px; margin: 0 auto; }
+
+.tabs { display: flex; gap: 8px; margin-bottom: 8px; }
+.tabs button {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-head button { width: auto; margin: 0; }
+
+.button-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--text);
+}
+.badge.PUBLISHED { background: var(--ok); color: #ffffff; }
+.badge.CANCELLED { background: var(--error); color: #ffffff; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 24px 0;
+}
+.stat .value { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat .label { color: var(--muted); font-size: 0.85rem; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+td.num, th.num { text-align: right; }
+
+.progress { height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+.progress span { display: block; height: 100%; background: var(--accent); }
+
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0 12px; }
+
+section + section { margin-top: 24px; }
+.page-head a { color: var(--accent); font-weight: 600; }
+[hidden] { display: none !important; }

@@ -19,8 +19,29 @@ enum OrderStatus {
   CANCELLED
 }
 
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  events       Event[]
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
 model Event {
   id          String       @id @default(cuid())
+  organizer   User?        @relation(fields: [organizerId], references: [id])
+  organizerId String?
   name        String
   description String?
   venue       String
