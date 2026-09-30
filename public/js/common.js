@@ -1,5 +1,15 @@
 // Funciones compartidas por las páginas de la ticketera.
 
+// Nombre y lema del sitio: cambiarlos acá los cambia en todas las páginas.
+export const SITE = {
+  name: "Ticketera",
+  tagline: "Las mejores fechas, en un solo lugar.",
+};
+
+// Aplica el nombre del sitio al logo, al pie y al título de la pestaña.
+for (const el of document.querySelectorAll("[data-site-name]")) el.textContent = SITE.name;
+document.title = document.title.replace("Ticketera", SITE.name);
+
 const priceFormatter = new Intl.NumberFormat("es-AR", {
   style: "currency",
   currency: "ARS",
@@ -29,6 +39,59 @@ export function formatPrice(cents) {
 
 export function formatDate(iso) {
   return dateFormatter.format(new Date(iso));
+}
+
+const partsFormatter = new Intl.DateTimeFormat("es-AR", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: "America/Argentina/Buenos_Aires",
+});
+
+// Día, mes abreviado, día de la semana y hora por separado (hora de Argentina).
+export function dateParts(iso) {
+  const parts = Object.fromEntries(partsFormatter.formatToParts(new Date(iso)).map((p) => [p.type, p.value]));
+  return {
+    day: parts.day,
+    month: parts.month.replace(".", ""),
+    weekday: parts.weekday.replace(".", ""),
+    time: `${parts.hour}:${parts.minute}`,
+  };
+}
+
+// Chip con el día y el mes, para poner sobre el flyer.
+export function dateChip(iso) {
+  const { day, month } = dateParts(iso);
+  return `<div class="date-chip"><span class="day">${escapeHtml(day)}</span><span class="month">${escapeHtml(month)}</span></div>`;
+}
+
+// Flyer del evento o, si no tiene, un degradé con su inicial.
+export function eventImage(event, alt = "") {
+  if (event.imageFile) {
+    return `<img class="flyer" src="/media/${encodeURIComponent(event.imageFile)}" alt="${escapeHtml(alt)}" loading="lazy">`;
+  }
+  const variant = [...String(event.id ?? event.name)].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 4;
+  const initial = (event.name ?? "?").trim().charAt(0).toUpperCase();
+  return `<div class="flyer-placeholder v${variant}" aria-hidden="true">${escapeHtml(initial)}</div>`;
+}
+
+// Achica la imagen en el navegador antes de subirla: sube rápido desde el celular
+// y se descartan los metadatos de la foto (ubicación, modelo del teléfono).
+export async function resizeImage(file, maxSize = 1600) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  const toBlob = (type) => new Promise((resolve) => canvas.toBlob(resolve, type, 0.85));
+  // Algunos navegadores no generan WebP: en ese caso devuelven PNG y usamos JPG.
+  const webp = await toBlob("image/webp");
+  return webp?.type === "image/webp" ? webp : toBlob("image/jpeg");
 }
 
 const HTML_ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
@@ -67,6 +130,7 @@ export async function setupPanelPage() {
   const notice = document.getElementById("account-notice");
   if (notice && user.suspended) {
     notice.textContent = "Tu cuenta está suspendida: tus eventos no aparecen en la cartelera y no podés publicar. Escribinos si creés que es un error.";
+    notice.classList.add("danger");
     notice.hidden = false;
   } else if (notice && !user.trusted) {
     notice.textContent = "Cada evento que publiques pasa por una revisión antes de aparecer en la cartelera. Suele ser rápido.";

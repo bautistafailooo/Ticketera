@@ -44,9 +44,10 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(err.status).json({ error: err.message, ...err.details });
     return;
   }
-  // Errores de express.json (JSON mal formado, cuerpo demasiado grande).
+  // Errores de express.json / express.raw (JSON mal formado, cuerpo demasiado grande).
   if (typeof err?.status === "number" && err.status >= 400 && err.status < 500 && err.expose) {
-    res.status(err.status).json({ error: "Pedido inválido" });
+    const message = err.status === 413 ? "El archivo es demasiado grande (máximo 5 MB)" : "Pedido inválido";
+    res.status(err.status).json({ error: message });
     return;
   }
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {

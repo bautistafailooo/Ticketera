@@ -1,4 +1,5 @@
 import "dotenv/config";
+import path from "node:path";
 
 const env = process.env;
 const isProduction = env.NODE_ENV === "production";
@@ -12,6 +13,8 @@ export const config = {
   simulatedPayments: env.SIMULATED_PAYMENTS ? env.SIMULATED_PAYMENTS === "true" : !isProduction,
   // Cantidad de proxies delante del servidor (para leer la IP real en los límites de pedidos).
   trustProxy: Number(env.TRUST_PROXY ?? 0),
+  // Carpeta donde se guardan los flyers de los eventos. En producción tiene que ser un disco persistente.
+  uploadDir: path.resolve(env.UPLOAD_DIR ?? "uploads"),
   // Permite desactivar los límites de pedidos en los tests.
   rateLimits: env.RATE_LIMITS !== "off",
 };

@@ -2,49 +2,58 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b12">
+  <meta name="referrer" content="no-referrer">
   <title>Puerta · Ticketera</title>
   <link rel="icon" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/styles.css">
   <script src="/vendor/jsQR.js" defer></script>
 </head>
 <body>
-  <header>
+  <header class="site-header">
     <div class="container">
-      <a class="logo" href="/">Ticketera</a>
-      <nav><span class="muted">Puerta</span></nav>
+      <a class="logo" href="/" data-site-name>Ticketera</a>
+      <nav class="site-nav"><span class="badge">Control de acceso</span></nav>
     </div>
   </header>
 
   <main class="container door">
     <div id="no-access" hidden>
-      <h1>Control de acceso</h1>
-      <p class="muted">Abrí el link de puerta que te pasó el organizador del evento.</p>
-      <p id="access-error" class="error" role="alert"></p>
+      <div class="empty">
+        <h1>Control de acceso</h1>
+        <p>Abrí el link de puerta que te pasó el organizador del evento.</p>
+        <p id="access-error" class="error" role="alert"></p>
+      </div>
     </div>
 
     <div id="app" hidden>
-      <div class="date" id="event-date"></div>
-      <h1 id="event-name"></h1>
+      <div class="cap" id="event-date" style="color: var(--accent); font-weight: 700"></div>
+      <h1 id="event-name" style="margin: 4px 0"></h1>
       <div class="muted" id="event-venue"></div>
 
-      <div class="card" style="margin-top: 16px">
-        <div class="counter"><span id="checked-in">0</span> / <span id="paid">0</span></div>
-        <div class="muted">ingresaron / entradas pagas</div>
+      <div class="card" style="margin-top: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px">
+        <div>
+          <div class="counter"><span id="checked-in">0</span><span class="faint"> / <span id="paid">0</span></span></div>
+          <div class="muted small">ingresaron / entradas pagas</div>
+        </div>
+        <button type="button" id="toggle-camera" class="btn btn-gradient">Escanear</button>
       </div>
 
       <div id="result" class="result idle" role="status" aria-live="assertive">
         <div class="title">Listo para validar</div>
-        <div>Escaneá un QR o cargá el código a mano.</div>
+        <div class="detail">Escaneá un QR o cargá el código a mano.</div>
       </div>
 
-      <button type="button" id="toggle-camera" class="button-secondary">Escanear con la cámara</button>
       <video id="video" playsinline muted hidden></video>
       <p id="camera-message" class="muted" role="alert"></p>
 
-      <form class="manual" id="manual">
-        <input id="code" placeholder="Ej: K7QM-4XTP-9HWD" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" aria-label="Código de la entrada">
-        <button type="submit">Validar</button>
+      <form class="inline-field" id="manual">
+        <input id="code" placeholder="Ej: K7QM-4XTP-9HWD" class="mono" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" aria-label="Código de la entrada">
+        <button type="submit" class="btn btn-secondary">Validar</button>
       </form>
     </div>
   </main>

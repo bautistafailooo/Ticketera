@@ -48,7 +48,7 @@ const timeFormatter = new Intl.DateTimeFormat("es-AR", {
 const resultEl = document.getElementById("result");
 function showResult(kind, title, detail) {
   resultEl.className = `result ${kind}`;
-  resultEl.innerHTML = `<div class="title">${escapeHtml(title)}</div>${detail ? `<div>${detail}</div>` : ""}`;
+  resultEl.innerHTML = `<div class="title">${escapeHtml(title)}</div>${detail ? `<div class="detail">${detail}</div>` : ""}`;
   try { navigator.vibrate?.(kind === "ok" ? 120 : [80, 60, 80, 60, 80]); } catch {}
 }
 
@@ -154,6 +154,7 @@ async function startCamera() {
   video.hidden = false;
   await video.play();
   cameraButton.textContent = "Apagar cámara";
+  cameraButton.classList.replace("btn-gradient", "btn-secondary");
   scanLoop();
 }
 
@@ -162,7 +163,8 @@ function stopCamera() {
   stream = null;
   video.hidden = true;
   video.srcObject = null;
-  cameraButton.textContent = "Escanear con la cámara";
+  cameraButton.textContent = "Escanear";
+  cameraButton.classList.replace("btn-secondary", "btn-gradient");
 }
 
 cameraButton.addEventListener("click", () => (stream ? stopCamera() : startCamera()));

@@ -60,6 +60,8 @@ model Event {
   organizerId String?
   name        String
   description String?
+  // Nombre del archivo del flyer dentro de la carpeta de subidas.
+  imageFile   String?
   venue       String
   startsAt    DateTime
   status      EventStatus  @default(DRAFT)

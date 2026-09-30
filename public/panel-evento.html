@@ -2,19 +2,23 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b12">
   <title>Evento · Panel · Ticketera</title>
   <link rel="icon" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header>
+  <header class="site-header">
     <div class="container">
-      <a class="logo" href="/">Ticketera</a>
-      <nav>
+      <a class="logo" href="/" data-site-name>Ticketera</a>
+      <nav class="site-nav">
         <a href="/panel.html">Mis eventos</a>
         <a href="/admin.html" id="admin-link" hidden>Administración</a>
-        <span class="muted" id="user-name"></span>
+        <span class="user-name" id="user-name"></span>
         <button type="button" class="link-button" id="logout">Salir</button>
       </nav>
     </div>
@@ -22,9 +26,15 @@
 
   <main class="container">
     <p class="notice" id="account-notice" hidden></p>
-    <a class="back" href="/panel.html">← Mis eventos</a>
-    <div id="content"><p class="muted">Cargando…</p></div>
+    <div id="content"><div class="skeleton" style="height: 320px"></div></div>
   </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-site-name>Ticketera</span></span>
+      <a href="/">Ver la cartelera</a>
+    </div>
+  </footer>
 
   <script type="module" src="/js/panel-evento.js"></script>
 </body>

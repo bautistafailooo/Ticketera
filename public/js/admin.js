@@ -1,4 +1,4 @@
-import { EVENT_STATUS, api, escapeHtml, formatDate, formatPrice, setupPanelPage } from "/js/common.js";
+import { EVENT_STATUS, api, escapeHtml, eventImage, formatDate, formatPrice, setupPanelPage } from "/js/common.js";
 
 const user = await setupPanelPage();
 const message = document.getElementById("message");
@@ -12,7 +12,7 @@ const dateFormatter = new Intl.DateTimeFormat("es-AR", {
 });
 
 const button = (label, action, id, secondary = false) =>
-  `<button type="button" class="button-inline${secondary ? " button-secondary" : ""}" data-action="${action}" data-id="${escapeHtml(id)}">${label}</button>`;
+  `<button type="button" class="btn btn-small${secondary ? " btn-secondary" : ""}" data-action="${action}" data-id="${escapeHtml(id)}">${label}</button>`;
 
 function organizerLabel(o) {
   return `${escapeHtml(o.name)} <span class="muted">(${escapeHtml(o.email)})</span>`;
@@ -20,23 +20,27 @@ function organizerLabel(o) {
 
 function renderPending(events) {
   const pending = events.filter((e) => e.status === "PENDING_REVIEW");
+  document.getElementById("pending-count").textContent = pending.length ? `${pending.length} pendientes` : "";
   if (pending.length === 0) {
-    pendingEl.innerHTML = '<p class="muted">No hay eventos esperando revisión.</p>';
+    pendingEl.innerHTML = '<div class="empty">No hay eventos esperando revisión. ✓</div>';
     return;
   }
   pendingEl.innerHTML = pending.map((e) => `
-    <article class="card">
-      <div class="date">${escapeHtml(formatDate(e.startsAt))}</div>
-      <h3>${escapeHtml(e.name)}</h3>
-      <div class="muted">${escapeHtml(e.venue)}</div>
-      ${e.description ? `<p>${escapeHtml(e.description)}</p>` : ""}
-      <p>Organizador: ${organizerLabel(e.organizer)}</p>
-      <ul>
-        ${e.ticketTypes.map((t) => `<li>${escapeHtml(t.name)}: ${formatPrice(t.priceCents)} × ${t.capacity}</li>`).join("")}
-      </ul>
-      <div class="actions">
-        ${button("Aprobar", "approve-event", e.id)}
-        ${button("Rechazar", "reject-event", e.id, true)}
+    <article class="card review-card">
+      <div class="thumb">${eventImage(e)}</div>
+      <div>
+        <div class="when" style="color: var(--accent); font-weight: 700">${escapeHtml(formatDate(e.startsAt))} h</div>
+        <h3 style="margin: 4px 0">${escapeHtml(e.name)}</h3>
+        <div class="muted">${escapeHtml(e.venue)}</div>
+        ${e.description ? `<p style="margin-top: 12px; white-space: pre-line">${escapeHtml(e.description)}</p>` : ""}
+        <p class="small" style="margin-top: 12px">Organizador: ${organizerLabel(e.organizer)}</p>
+        <ul>
+          ${e.ticketTypes.map((t) => `<li>${escapeHtml(t.name)}: ${formatPrice(t.priceCents)} × ${t.capacity}</li>`).join("")}
+        </ul>
+        <div class="form-actions">
+          ${button("Aprobar", "approve-event", e.id)}
+          ${button("Rechazar", "reject-event", e.id, true)}
+        </div>
       </div>
     </article>`).join("");
 }
@@ -53,11 +57,11 @@ function renderEvents(events) {
       <tbody>
         ${others.map((e) => `
           <tr>
-            <td>${escapeHtml(e.name)}${e.reviewNote ? `<div class="muted">${escapeHtml(e.reviewNote)}</div>` : ""}</td>
+            <td class="wrap"><a href="/evento.html?id=${encodeURIComponent(e.id)}" style="color: var(--text)">${escapeHtml(e.name)}</a>${e.reviewNote ? `<div class="faint small">${escapeHtml(e.reviewNote)}</div>` : ""}</td>
             <td>${escapeHtml(dateFormatter.format(new Date(e.startsAt)))}</td>
-            <td>${escapeHtml(e.organizer?.name ?? "—")}${e.organizer?.suspendedAt ? '<div class="error">Suspendido: no aparece en la cartelera</div>' : ""}</td>
+            <td>${escapeHtml(e.organizer?.name ?? "—")}${e.organizer?.suspendedAt ? '<div class="error small">Suspendido: no aparece en la cartelera</div>' : ""}</td>
             <td><span class="badge ${escapeHtml(e.status)}">${EVENT_STATUS[e.status]}</span></td>
-            <td class="actions-cell"><div class="row-actions">
+            <td><div class="row-actions">
               ${e.status === "PUBLISHED" ? button("Pausar", "pause-event", e.id, true) : ""}
               ${e.status === "PAUSED" ? button("Reactivar", "resume-event", e.id) : ""}
             </div></td>
@@ -68,9 +72,9 @@ function renderEvents(events) {
 
 function organizerStatus(o) {
   if (o.role === "ADMIN") return '<span class="badge PUBLISHED">Admin</span>';
-  if (o.suspendedAt) return '<span class="badge PAUSED">Suspendido</span>';
+  if (o.suspendedAt) return '<span class="badge danger">Suspendido</span>';
   if (o.trustedAt) return '<span class="badge PUBLISHED">Confiable</span>';
-  return '<span class="badge">Con revisión</span>';
+  return '<span class="badge warn">Con revisión</span>';
 }
 
 function organizerActions(o) {
@@ -88,11 +92,11 @@ function renderOrganizers(users) {
       <tbody>
         ${users.map((u) => `
           <tr>
-            <td>${escapeHtml(u.name)}<div class="muted">${escapeHtml(u.email)}</div></td>
+            <td class="wrap">${escapeHtml(u.name)}<div class="faint small">${escapeHtml(u.email)}</div></td>
             <td>${escapeHtml(dateFormatter.format(new Date(u.createdAt)))}</td>
             <td class="num">${u._count.events}</td>
             <td>${organizerStatus(u)}</td>
-            <td class="actions-cell"><div class="row-actions">${organizerActions(u)}</div></td>
+            <td><div class="row-actions">${organizerActions(u)}</div></td>
           </tr>`).join("")}
       </tbody>
     </table></div>`;

@@ -24,6 +24,11 @@ export function createApp() {
   app.use(securityHeaders);
   app.use(express.json({ limit: "20kb" }));
   app.use(express.static(path.join(import.meta.dirname, "../public")));
+  // Flyers de los eventos. Los nombres son aleatorios y no cambian: se pueden cachear.
+  app.use(
+    "/media",
+    express.static(config.uploadDir, { maxAge: "30d", immutable: true, index: false, dotfiles: "deny" }),
+  );
   // Decodificador de QR para la app de puerta (navegadores sin BarcodeDetector).
   app.get("/vendor/jsQR.js", (_req, res) => {
     res.sendFile(path.join(import.meta.dirname, "../node_modules/jsqr/dist/jsQR.js"));

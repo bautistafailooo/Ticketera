@@ -1,4 +1,4 @@
-import { api, escapeHtml, formatDate, formatPrice } from "/js/common.js";
+import { api, escapeHtml, eventImage, formatDate, formatPrice } from "/js/common.js";
 
 const content = document.getElementById("content");
 
@@ -13,45 +13,51 @@ const orderApi = (path = "", options = {}) =>
 
 let countdown = null;
 
-function header(order) {
+function header(order, badge) {
   return `
-    <h1>${escapeHtml(order.event.name)}</h1>
-    <p class="muted">${escapeHtml(formatDate(order.event.startsAt))} · ${escapeHtml(order.event.venue)}</p>`;
+    <div class="order-head">
+      <div class="thumb">${eventImage(order.event)}</div>
+      <div>
+        ${badge}
+        <h1 style="margin: 8px 0 4px">${escapeHtml(order.event.name)}</h1>
+        <div class="muted">${escapeHtml(formatDate(order.event.startsAt))} h · ${escapeHtml(order.event.venue)}</div>
+      </div>
+    </div>`;
 }
 
-function ticketSummary(order) {
+function summary(order) {
   const counts = new Map();
   for (const t of order.tickets) {
     const row = counts.get(t.ticketType) ?? { quantity: 0, priceCents: t.priceCents };
     row.quantity++;
     counts.set(t.ticketType, row);
   }
-  const rows = [...counts].map(([name, { quantity, priceCents }]) => `
-    <tr><td>${quantity} × ${escapeHtml(name)}</td><td class="num">${formatPrice(quantity * priceCents)}</td></tr>`).join("");
+  const rows = [...counts].map(([name, { quantity, priceCents }]) =>
+    `<li><span>${quantity} × ${escapeHtml(name)}</span><span>${formatPrice(quantity * priceCents)}</span></li>`).join("");
   return `
-    <div class="table-wrap"><table>
-      <tbody>${rows}</tbody>
-      <tfoot><tr><th>Total</th><th class="num">${formatPrice(order.totalCents)}</th></tr></tfoot>
-    </table></div>`;
+    <ul class="lines">${rows}</ul>
+    <div class="total-line"><span>Total</span><span class="amount">${formatPrice(order.totalCents)}</span></div>`;
 }
 
 function renderPending(order) {
   content.innerHTML = `
-    <p class="muted">Compra a nombre de ${escapeHtml(order.buyerName)}</p>
-    ${header(order)}
-    <div class="layout">
+    ${header(order, '<span class="badge warn">Reserva pendiente de pago</span>')}
+    <div class="two-col">
       <section class="card">
         <h2>Tu reserva</h2>
-        ${ticketSummary(order)}
+        <p class="muted small">A nombre de ${escapeHtml(order.buyerName)} · ${escapeHtml(order.buyerEmail)}</p>
+        ${summary(order)}
       </section>
       <section class="card">
         <h2>Pago</h2>
-        <p>Tus entradas están reservadas por <strong id="countdown"></strong>. Si no pagás a tiempo, se liberan.</p>
+        <p class="muted" style="margin-bottom: 4px">Tus entradas están reservadas por</p>
+        <div class="countdown" id="countdown">--:--</div>
+        <p class="muted small">Si no pagás a tiempo, se liberan para otras personas.</p>
         ${order.simulatedPayments
-          ? `<button type="button" id="pay">Pagar ${formatPrice(order.totalCents)} (simulado)</button>
-             <p class="muted">Modo de prueba: el pago se confirma sin cobrar.</p>`
-          : '<p class="error">El pago en línea todavía no está disponible.</p>'}
-        <p id="message" class="error" role="alert"></p>
+          ? `<button type="button" class="btn btn-gradient btn-block" id="pay">Pagar ${formatPrice(order.totalCents)}</button>
+             <p class="field-hint">Modo de prueba: el pago se confirma sin cobrar.</p>`
+          : '<p class="notice warn">El pago en línea todavía no está disponible.</p>'}
+        <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
       </section>
     </div>`;
 
@@ -60,6 +66,7 @@ function renderPending(order) {
   const tick = () => {
     const seconds = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
     countdownEl.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    countdownEl.classList.toggle("low", seconds < 120);
     if (seconds === 0) {
       clearInterval(countdown);
       load();
@@ -70,6 +77,7 @@ function renderPending(order) {
 
   document.getElementById("pay")?.addEventListener("click", async (e) => {
     e.target.disabled = true;
+    e.target.textContent = "Procesando pago…";
     try {
       await orderApi("/simulate-payment", { method: "POST" });
       clearInterval(countdown);
@@ -77,30 +85,45 @@ function renderPending(order) {
     } catch (err) {
       document.getElementById("message").textContent = err.message;
       e.target.disabled = false;
+      e.target.textContent = `Pagar ${formatPrice(order.totalCents)}`;
     }
   });
 }
 
 function renderPaid(order) {
+  const when = formatDate(order.event.startsAt);
   content.innerHTML = `
-    <p class="success">¡Compra confirmada!</p>
-    ${header(order)}
-    <p>A nombre de ${escapeHtml(order.buyerName)} · Total ${formatPrice(order.totalCents)}</p>
-    <p class="muted">Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código que está debajo.</p>
+    ${header(order, '<span class="badge ok">¡Compra confirmada!</span>')}
+    <p class="notice ok">Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código que está debajo.</p>
     <div class="tickets">
-      ${order.tickets.map((ticket) => `
-        <div class="card ticket">
-          <strong>${escapeHtml(ticket.ticketType)}</strong>
-          <div class="qr"><img src="/tickets/${encodeURIComponent(ticket.code)}/qr.svg" alt="Código QR de la entrada"></div>
-          <div class="code">${escapeHtml(ticket.code)}</div>
-        </div>`).join("")}
+      ${order.tickets.map((ticket, i) => `
+        <article class="ticket-stub">
+          <div class="info">
+            <span class="faint small">Entrada ${i + 1} de ${order.tickets.length}</span>
+            <span class="type">${escapeHtml(ticket.ticketType)}</span>
+            <strong>${escapeHtml(order.event.name)}</strong>
+            <dl>
+              <dt>Cuándo</dt><dd>${escapeHtml(when)} h</dd>
+              <dt>Dónde</dt><dd>${escapeHtml(order.event.venue)}</dd>
+              <dt>Titular</dt><dd>${escapeHtml(order.buyerName)}</dd>
+            </dl>
+          </div>
+          <div class="qr-side">
+            <div class="qr"><img src="/tickets/${encodeURIComponent(ticket.code)}/qr.svg" alt="Código QR de la entrada ${i + 1}"></div>
+            <div class="ticket-code">${escapeHtml(ticket.code)}</div>
+          </div>
+        </article>`).join("")}
     </div>
+
     <section class="card" style="margin-top: 24px">
       <h2>Guardá este link</h2>
-      <p class="muted">Con este link podés volver a ver tus entradas. No lo compartas: quien lo tenga puede usarlas.</p>
-      <div class="door-link">
+      <p class="muted">Con este link volvés a ver tus entradas cuando quieras. No lo compartas: quien lo tenga puede usarlas.</p>
+      <div class="link-box">
         <input id="order-link" readonly value="${escapeHtml(location.href)}" aria-label="Link de tu compra">
-        <button type="button" id="copy" class="button-secondary">Copiar</button>
+        <button type="button" id="copy" class="btn btn-secondary">Copiar</button>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" id="print">Imprimir entradas</button>
       </div>
     </section>`;
 
@@ -114,6 +137,7 @@ function renderPaid(order) {
     e.target.textContent = "¡Copiado!";
     setTimeout(() => (e.target.textContent = "Copiar"), 2000);
   });
+  document.getElementById("print").addEventListener("click", () => print());
 }
 
 function renderClosed(order) {
@@ -121,21 +145,23 @@ function renderClosed(order) {
     ? "La reserva venció porque no se pagó a tiempo, y las entradas se liberaron."
     : "Esta compra fue cancelada.";
   content.innerHTML = `
-    <p class="error">${reason}</p>
-    ${header(order)}
-    <p><a href="/evento.html?id=${encodeURIComponent(order.event.id)}">Volver a comprar</a></p>`;
+    ${header(order, `<span class="badge danger">${order.status === "EXPIRED" ? "Reserva vencida" : "Cancelada"}</span>`)}
+    <div class="empty">
+      <p>${reason}</p>
+      <a class="btn btn-gradient" href="/evento.html?id=${encodeURIComponent(order.event.id)}">Volver a comprar</a>
+    </div>`;
 }
 
 async function load() {
   try {
     if (!orderId || !token) throw new Error("El link de la compra está incompleto.");
     const order = await orderApi();
-    document.title = `${order.event.name} · Tu compra · Ticketera`;
+    document.title = document.title.replace(/^Tu compra/, `${order.event.name} · Tu compra`);
     if (order.status === "PAID") renderPaid(order);
     else if (order.status === "PENDING") renderPending(order);
     else renderClosed(order);
   } catch (err) {
-    content.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+    content.innerHTML = `<div class="empty"><p class="error">${escapeHtml(err.message)}</p><a class="btn btn-secondary" href="/">Ir a la cartelera</a></div>`;
   }
 }
 

@@ -128,7 +128,7 @@ ordersRouter.get("/:id", async (req, res) => {
   const full = await prisma.order.findUniqueOrThrow({
     where: { id: order.id },
     include: {
-      event: { select: { id: true, name: true, venue: true, startsAt: true } },
+      event: { select: { id: true, name: true, venue: true, startsAt: true, imageFile: true } },
       tickets: { include: { ticketType: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
     },
   });

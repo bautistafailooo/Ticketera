@@ -1,6 +1,6 @@
 # Ticketera
 
-Plataforma para vender entradas a eventos: cartelera, compra con QR, panel para organizadores, administración y app de puerta para validar entradas.
+Plataforma para vender entradas a eventos: cartelera con flyers, compra con QR, panel para organizadores, administración y app de puerta para validar entradas. Diseño oscuro pensado primero para el celular.
 
 Stack: Node.js 22 + TypeScript, Express 5, Prisma 7 (SQLite en desarrollo), Zod y Vitest. El frontend son páginas HTML simples en `public/`, sin paso de compilación.
 
@@ -18,6 +18,8 @@ npm test
 `npm run db:seed` crea un administrador de prueba: **organizador@ticketera.test** / **ticketera123**.
 
 Para convertir una cuenta existente en administrador: `npm run make-admin -- email@ejemplo.com`.
+
+El nombre y el lema del sitio se cambian en un solo lugar: `SITE` en `public/js/common.js`.
 
 ## Páginas
 
@@ -44,6 +46,8 @@ En el panel, cada evento indica si está visible en la cartelera y, si no, por q
 
 **Puerta.** El organizador genera un link de puerta por evento con una clave secreta. Quien lo tenga puede validar entradas de ese evento (y de ningún otro), sin crear cuenta. Si se filtra, se regenera y el anterior deja de funcionar.
 
+**Flyers.** El organizador sube la imagen del evento desde el panel. El navegador la achica (máximo 1600 px, WebP) antes de subirla, lo que además borra los metadatos de la foto. El servidor verifica por su contenido que sea JPG, PNG o WebP (hasta 5 MB) y la guarda en `UPLOAD_DIR` con un nombre aleatorio. Se sirve en `/media/<archivo>`. Las mismas reglas de edición que el resto del evento: un organizador no confiable no puede cambiarla después de aprobado.
+
 **Códigos de entrada.** Formato `K7QM-4XTP-9HWD` (Base32 de Crockford, sin I, L, O ni U) para que se puedan dictar. Al cargarlos a mano no importan mayúsculas, espacios ni guiones, y se corrige O→0 e I/L→1. Las entradas con el formato anterior siguen siendo válidas.
 
 ## Reglas y protecciones
@@ -69,6 +73,7 @@ En el panel, cada evento indica si está visible en la cartelera y, si no, por q
 | `ORDER_TTL_MINUTES`   | `15`                           | Minutos para pagar antes de que la orden venza                |
 | `SIMULATED_PAYMENTS`  | `true` en desarrollo, `false` en producción | Permite confirmar compras sin cobrar             |
 | `TRUST_PROXY`         | `0`                            | Cantidad de proxies delante del servidor (para leer la IP real) |
+| `UPLOAD_DIR`          | `uploads`                      | Carpeta de los flyers. En producción, un disco persistente     |
 
 ## Modelo de datos
 
@@ -116,6 +121,8 @@ Organizador (requieren sesión y solo acceden a eventos propios):
 | GET    | `/organizer/events/:id`                | Detalle con estadísticas y últimas órdenes              |
 | POST   | `/organizer/events/:id/ticket-types`   | Agregar un tipo de entrada                              |
 | POST   | `/organizer/events/:id/publish`        | Publicar (confiable) o enviar a revisión (no confiable) |
+| PUT    | `/organizer/events/:id/image`          | Subir o reemplazar el flyer (el cuerpo es la imagen)    |
+| DELETE | `/organizer/events/:id/image`          | Quitar el flyer                                         |
 | POST   | `/organizer/events/:id/door-token`     | Generar o regenerar el link de puerta                   |
 
 Administración (requieren sesión de administrador):
@@ -143,7 +150,7 @@ App de puerta (requieren el header `x-door-token` con la clave del link de puert
 ## Pendiente antes de producción
 
 1. **Pagos reales** con Mercado Pago (Checkout Pro + webhook). Contemplar un pago que llega después de que la orden venció.
-2. **Publicar online** con https y PostgreSQL (cambiar `provider` y el adapter de Prisma). Detrás de un proxy, configurar `TRUST_PROXY`.
+2. **Publicar online** con https y PostgreSQL (cambiar `provider` y el adapter de Prisma). Detrás de un proxy, configurar `TRUST_PROXY`. Los flyers necesitan un disco persistente (`UPLOAD_DIR`) o un almacenamiento de archivos (S3, R2).
 3. **Entrega de entradas por email**, con el link de la compra.
 4. **Límites de pedidos compartidos** (por ejemplo con Redis) si se corre más de una instancia del servidor.
 5. `npm audit` marca alertas en la herramienta de línea de comandos de Prisma (soporte MySQL y lectura de su configuración). No afectan a la ticketera: revisar al actualizar Prisma.

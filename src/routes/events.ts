@@ -11,6 +11,7 @@ const publicEvent = {
   id: true,
   name: true,
   description: true,
+  imageFile: true,
   venue: true,
   startsAt: true,
   ticketTypes: {

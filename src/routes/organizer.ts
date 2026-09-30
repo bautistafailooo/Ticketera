@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
-import { Router } from "express";
+import express, { Router } from "express";
 import { z } from "zod";
 import { requireUser, userOf } from "../auth.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { canEdit, isTrusted, visibility } from "../events.js";
+import { MAX_IMAGE_BYTES, deleteImage, detectImageType, saveImage } from "../images.js";
 import { expireOrders } from "../orders.js";
 
 // Rutas del panel del organizador: requieren sesión y solo acceden a sus eventos.
@@ -175,6 +176,41 @@ organizerRouter.post("/events/:id/ticket-types", async (req, res) => {
     data: { ...data, eventId: event.id },
   });
   res.status(201).json(ticketType);
+});
+
+// Sube o reemplaza el flyer. El cuerpo del pedido es la imagen (JPG, PNG o WebP).
+organizerRouter.put(
+  "/events/:id/image",
+  express.raw({ type: () => true, limit: MAX_IMAGE_BYTES }),
+  async (req, res) => {
+    const user = userOf(res);
+    const event = await findOwnEvent(String(req.params.id), user.id);
+    assertEditable(event, user);
+    const data = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    const type = detectImageType(data);
+    if (!type) throw new HttpError(400, "La imagen tiene que ser JPG, PNG o WebP");
+
+    const file = await saveImage(data, type);
+    const updated = await prisma.event.updateMany({
+      where: { id: event.id, status: event.status },
+      data: { imageFile: file },
+    });
+    if (updated.count === 0) {
+      await deleteImage(file);
+      throw new HttpError(409, "El evento cambió de estado. Recargá la página.");
+    }
+    await deleteImage(event.imageFile);
+    res.json({ imageFile: file });
+  },
+);
+
+organizerRouter.delete("/events/:id/image", async (req, res) => {
+  const user = userOf(res);
+  const event = await findOwnEvent(req.params.id, user.id);
+  assertEditable(event, user);
+  await prisma.event.update({ where: { id: event.id }, data: { imageFile: null } });
+  await deleteImage(event.imageFile);
+  res.json({ ok: true });
 });
 
 // Publica el evento (organizador confiable) o lo envía a revisión (no confiable).

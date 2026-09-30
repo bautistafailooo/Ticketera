@@ -13,3 +13,9 @@ dist
 .windsurf/
 .claude/skills/
 skills-lock.json
+
+# Flyers subidos por los organizadores
+uploads/
+test-uploads/
+demo.db
+demo-uploads/

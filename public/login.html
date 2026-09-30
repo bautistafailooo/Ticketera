@@ -2,43 +2,57 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b12">
   <title>Organizadores · Ticketera</title>
   <link rel="icon" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header>
+  <header class="site-header">
     <div class="container">
-      <a class="logo" href="/">Ticketera</a>
-      <nav><a href="/">Cartelera</a></nav>
+      <a class="logo" href="/" data-site-name>Ticketera</a>
+      <nav class="site-nav"><a href="/">Cartelera</a></nav>
     </div>
   </header>
 
-  <main class="container narrow">
-    <h1>Organizadores</h1>
-    <p class="muted">Ingresá para crear y administrar tus eventos.</p>
+  <main class="container">
+    <div class="auth">
+      <h1 style="text-align: center">Vendé tus entradas</h1>
+      <p class="muted" style="text-align: center">Creá tu cuenta de organizador o ingresá para administrar tus eventos.</p>
 
-    <div class="card">
-      <div class="tabs" role="tablist">
-        <button type="button" role="tab" id="tab-login" aria-selected="true">Ingresar</button>
-        <button type="button" role="tab" id="tab-register" aria-selected="false">Crear cuenta</button>
-      </div>
-
-      <form id="form">
-        <div id="name-field" hidden>
-          <label for="name">Nombre o productora</label>
-          <input id="name" autocomplete="organization">
+      <div class="card">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" id="tab-login" aria-selected="true">Ingresar</button>
+          <button type="button" role="tab" id="tab-register" aria-selected="false">Crear cuenta</button>
         </div>
-        <label for="email">Email</label>
-        <input id="email" type="email" required autocomplete="email">
-        <label for="password">Contraseña</label>
-        <input id="password" type="password" required minlength="8" autocomplete="current-password">
-        <button type="submit" id="submit">Ingresar</button>
-        <p id="message" class="error" role="alert"></p>
-      </form>
+
+        <form id="form">
+          <div id="name-field" hidden>
+            <label for="name">Nombre o productora</label>
+            <input id="name" maxlength="100" autocomplete="organization">
+          </div>
+          <label for="email">Email</label>
+          <input id="email" type="email" required maxlength="200" autocomplete="email">
+          <label for="password">Contraseña</label>
+          <input id="password" type="password" required minlength="8" maxlength="200" autocomplete="current-password">
+          <p class="field-hint" id="password-hint" hidden>Al menos 8 caracteres.</p>
+          <button type="submit" id="submit" class="btn btn-gradient btn-block" style="margin-top: 24px">Ingresar</button>
+          <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
+        </form>
+      </div>
     </div>
   </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-site-name>Ticketera</span></span>
+      <a href="/">Ver la cartelera</a>
+    </div>
+  </footer>
 
   <script type="module" src="/js/login.js"></script>
 </body>
