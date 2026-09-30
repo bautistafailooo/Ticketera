@@ -15,7 +15,8 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx src/seed.ts",
     "make-admin": "tsx src/make-admin.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "tunel": "prisma generate && node scripts/tunel.mjs"
   },
   "repository": {
     "type": "git",

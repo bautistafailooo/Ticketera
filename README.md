@@ -21,7 +21,9 @@ Para convertir una cuenta existente en administrador: `npm run make-admin -- ema
 
 El nombre y el lema del sitio se cambian en un solo lugar: `SITE` en `public/js/common.js`.
 
-**Para subirla a internet:** ver [DEPLOY.md](DEPLOY.md) (Railway, paso a paso).
+**Para probarla online desde tu compu, gratis:** `npm run tunel` (ver [TUNEL.md](TUNEL.md)).
+
+**Para subirla a un servidor:** ver [DEPLOY.md](DEPLOY.md).
 
 ## Páginas
 
