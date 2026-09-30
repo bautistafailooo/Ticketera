@@ -7,10 +7,27 @@
 
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { existsSync } from "node:fs";
 import "dotenv/config";
 
 const PORT = process.env.PORT ?? "3000";
-const CLOUDFLARED = process.env.CLOUDFLARED_BIN ?? "cloudflared";
+
+// Busca cloudflared: primero la variable CLOUDFLARED_BIN, después las carpetas donde lo
+// instala Windows (así anda aunque la terminal se haya abierto antes de instalarlo).
+function findCloudflared() {
+  if (process.env.CLOUDFLARED_BIN) return process.env.CLOUDFLARED_BIN;
+  if (process.platform === "win32") {
+    const candidates = [
+      `${process.env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)"}\\cloudflared\\cloudflared.exe`,
+      `${process.env.ProgramFiles ?? "C:\\Program Files"}\\cloudflared\\cloudflared.exe`,
+      `${process.env.LOCALAPPDATA ?? ""}\\Microsoft\\WinGet\\Links\\cloudflared.exe`,
+    ];
+    const found = candidates.find((path) => existsSync(path));
+    if (found) return found;
+  }
+  return "cloudflared";
+}
+const CLOUDFLARED = findCloudflared();
 // El sitio queda público en internet: siempre con contraseña.
 const SITE_PASSWORD = process.env.SITE_PASSWORD || randomBytes(6).toString("hex");
 
