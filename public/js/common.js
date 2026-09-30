@@ -64,14 +64,34 @@ export async function setupPanelPage() {
   document.getElementById("user-name").textContent = user.name;
   document.getElementById("logout").addEventListener("click", logout);
   document.getElementById("admin-link").hidden = user.role !== "ADMIN";
-  const notice = document.getElementById("pending-notice");
-  if (notice) notice.hidden = user.approved;
+  const notice = document.getElementById("account-notice");
+  if (notice && user.suspended) {
+    notice.textContent = "Tu cuenta está suspendida: tus eventos no aparecen en la cartelera y no podés publicar. Escribinos si creés que es un error.";
+    notice.hidden = false;
+  } else if (notice && !user.trusted) {
+    notice.textContent = "Cada evento que publiques pasa por una revisión antes de aparecer en la cartelera. Suele ser rápido.";
+    notice.hidden = false;
+  }
   return user;
 }
 
 export async function logout() {
   await api("/auth/logout", { method: "POST" });
   location.href = "/login.html";
+}
+
+export const EVENT_STATUS = {
+  DRAFT: "Borrador",
+  PENDING_REVIEW: "En revisión",
+  PUBLISHED: "Publicado",
+  REJECTED: "Rechazado",
+  PAUSED: "Pausado",
+  CANCELLED: "Cancelado",
+};
+
+// Valor para un <input type="datetime-local"> con la hora de Argentina (UTC-3).
+export function argentinaLocalValue(iso) {
+  return new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000).toISOString().slice(0, 16);
 }
 
 // Convierte el valor de un <input type="datetime-local"> a hora de Argentina.

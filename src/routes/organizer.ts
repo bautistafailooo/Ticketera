@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireUser, userOf } from "../auth.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { canEdit, isTrusted, visibility } from "../events.js";
 import { expireOrders } from "../orders.js";
 
 // Rutas del panel del organizador: requieren sesión y solo acceden a sus eventos.
@@ -18,6 +19,8 @@ const createEventSchema = z.object({
   venue: z.string().trim().min(1).max(200),
   startsAt: z.coerce.date().refine(inTheFuture, "Tiene que ser una fecha futura"),
 });
+
+const updateEventSchema = createEventSchema.partial();
 
 const createTicketTypeSchema = z.object({
   name: z.string().trim().min(1).max(60),
@@ -88,11 +91,13 @@ organizerRouter.get("/events", async (_req, res) => {
     orderBy: { startsAt: "asc" },
     include: { ticketTypes: true },
   });
+  const user = userOf(res);
   const stats = await ticketStats(events.flatMap((e) => e.ticketTypes.map((t) => t.id)));
   res.json(
     events.map(({ doorToken: _doorToken, ...event }) => ({
       ...event,
       ...withStats(event.ticketTypes, stats),
+      visibility: visibility(event, user),
     })),
   );
 });
@@ -123,12 +128,46 @@ organizerRouter.get("/events/:id", async (req, res) => {
       _count: { select: { tickets: true } },
     },
   });
-  res.json({ ...event, ...withStats(event.ticketTypes, stats), orders });
+  const user = userOf(res);
+  res.json({
+    ...event,
+    ...withStats(event.ticketTypes, stats),
+    orders,
+    visibility: visibility(event, user),
+    editable: canEdit(event, user),
+  });
+});
+
+function assertEditable(event: Parameters<typeof canEdit>[0], user: Parameters<typeof canEdit>[1]) {
+  if (!canEdit(event, user)) {
+    throw new HttpError(
+      409,
+      event.status === "PENDING_REVIEW"
+        ? "El evento está en revisión: esperá la respuesta antes de modificarlo"
+        : "Este evento ya no se puede modificar",
+    );
+  }
+}
+
+organizerRouter.patch("/events/:id", async (req, res) => {
+  const data = updateEventSchema.parse(req.body);
+  const user = userOf(res);
+  const event = await findOwnEvent(req.params.id, user.id);
+  assertEditable(event, user);
+  // Se actualiza solo si el estado no cambió mientras tanto (por ejemplo, una revisión).
+  const updated = await prisma.event.updateMany({
+    where: { id: event.id, status: event.status },
+    data,
+  });
+  if (updated.count === 0) throw new HttpError(409, "El evento cambió de estado. Recargá la página.");
+  res.json(await prisma.event.findUniqueOrThrow({ where: { id: event.id } }));
 });
 
 organizerRouter.post("/events/:id/ticket-types", async (req, res) => {
   const data = createTicketTypeSchema.parse(req.body);
-  const event = await findOwnEvent(req.params.id, userOf(res).id);
+  const user = userOf(res);
+  const event = await findOwnEvent(req.params.id, user.id);
+  assertEditable(event, user);
   if (event.ticketTypes.some((t) => t.name.toLowerCase() === data.name.toLowerCase())) {
     throw new HttpError(409, "Ya existe un tipo de entrada con ese nombre");
   }
@@ -138,22 +177,26 @@ organizerRouter.post("/events/:id/ticket-types", async (req, res) => {
   res.status(201).json(ticketType);
 });
 
+// Publica el evento (organizador confiable) o lo envía a revisión (no confiable).
 organizerRouter.post("/events/:id/publish", async (req, res) => {
   const user = userOf(res);
   const event = await findOwnEvent(req.params.id, user.id);
-  if (!user.approvedAt) {
-    throw new HttpError(403, "Tu cuenta todavía no fue aprobada. Podés publicar cuando un administrador la apruebe.");
+  if (user.suspendedAt) throw new HttpError(403, "Tu cuenta está suspendida");
+  if (event.status !== "DRAFT" && event.status !== "REJECTED") {
+    throw new HttpError(409, "El evento ya fue publicado o enviado a revisión");
   }
-  if (event.status !== "DRAFT") throw new HttpError(409, "El evento ya fue publicado");
   if (event.ticketTypes.length === 0) {
     throw new HttpError(409, "El evento necesita al menos un tipo de entrada");
   }
-  if (!inTheFuture(event.startsAt)) throw new HttpError(409, "El evento ya pasó");
-  const updated = await prisma.event.update({
-    where: { id: event.id },
-    data: { status: "PUBLISHED" },
+  if (!inTheFuture(event.startsAt)) throw new HttpError(409, "La fecha del evento ya pasó");
+
+  const status = isTrusted(user) ? "PUBLISHED" : "PENDING_REVIEW";
+  const updated = await prisma.event.updateMany({
+    where: { id: event.id, status: event.status },
+    data: { status },
   });
-  res.json(updated);
+  if (updated.count === 0) throw new HttpError(409, "El evento cambió de estado. Recargá la página.");
+  res.json({ status });
 });
 
 // Genera (o regenera) el link de puerta del evento. El link anterior deja de funcionar.

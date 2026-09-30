@@ -25,14 +25,18 @@ Para convertir una cuenta existente en administrador: `npm run make-admin -- ema
 - **Evento** (`/evento.html?id=...`): tipos de entrada y formulario de compra.
 - **Tu compra** (`/orden.html#<orden>.<clave>`): estado de la orden, pago y, una vez paga, las entradas con su QR. El link se puede guardar para volver a verlas.
 - **Panel del organizador** (`/panel.html`): eventos con ventas y recaudación, tipos de entrada, publicación, link de puerta y últimas órdenes.
-- **Administración** (`/admin.html`): aprobar organizadores o quitarles la aprobación.
+- **Administración** (`/admin.html`): revisar eventos (aprobar, rechazar con motivo, pausar, reactivar) y gestionar organizadores (confiable, suspendido).
 - **App de puerta** (`/puerta.html#<clave>`): escanea el QR con la cámara (o se carga el código a mano) y muestra si la entrada es válida, ya fue usada, no está paga o es de otro evento.
 
 > La cámara del navegador solo funciona en páginas `https` o en `localhost`. Desde otro dispositivo en tu red local se puede cargar el código a mano.
 
 ## Cómo funciona
 
-**Organizadores.** Cualquiera puede crear una cuenta, pero queda pendiente: puede preparar eventos y no publicarlos hasta que un administrador la apruebe. Si se le quita la aprobación, sus eventos salen de la cartelera y dejan de venderse.
+**Organizadores y revisión de eventos.** Cualquiera puede crear una cuenta de organizador. Cada evento de un organizador nuevo se **envía a revisión** y aparece en la cartelera recién cuando un administrador lo aprueba. Si lo rechaza, el organizador ve el motivo, lo corrige y lo vuelve a enviar. Cuando un administrador marca a un organizador como **confiable**, sus eventos se publican directo. Un organizador no confiable solo puede modificar eventos que todavía no fueron aprobados, para no saltear la revisión.
+
+El administrador puede **pausar un evento puntual** con un motivo: sale de la cartelera y deja de venderse, pero las entradas ya vendidas siguen valiendo en la puerta. También puede **suspender** a un organizador: todos sus eventos salen de la cartelera y no puede publicar.
+
+En el panel, cada evento indica si está visible en la cartelera y, si no, por qué.
 
 **Compras.** Al comprar se crea una orden pendiente que reserva las entradas por 15 minutos (`ORDER_TTL_MINUTES`). Si no se paga a tiempo, vence y el cupo se libera. Las entradas gratis se confirman al instante. Cada orden tiene una clave secreta: sin ella nadie puede ver la orden, y los códigos de las entradas se entregan recién cuando está paga.
 
@@ -44,7 +48,7 @@ Para convertir una cuenta existente en administrador: `npm run make-admin -- ema
 
 ## Reglas y protecciones
 
-- Solo se venden entradas de eventos publicados, futuros y de organizadores aprobados.
+- Solo se venden entradas de eventos publicados, futuros y de organizadores no suspendidos.
 - No hay sobreventa: el cupo se reserva con una actualización atómica, también con compras simultáneas.
 - Hasta 10 entradas por compra, todas del mismo evento.
 - Una entrada se valida solo si está paga, una sola vez, y con el link de puerta de su evento.
@@ -70,9 +74,9 @@ Para convertir una cuenta existente en administrador: `npm run make-admin -- ema
 
 | Entidad      | Qué representa                                                                 |
 |--------------|--------------------------------------------------------------------------------|
-| `User`       | Organizador o administrador (`role`), con fecha de aprobación (`approvedAt`).   |
+| `User`       | Organizador o administrador (`role`); confiable (`trustedAt`) o suspendido (`suspendedAt`). |
 | `Session`    | Una sesión iniciada; vence a los 7 días.                                        |
-| `Event`      | Un evento de un organizador. Estados: `DRAFT`, `PUBLISHED`, `CANCELLED`.        |
+| `Event`      | Un evento de un organizador. Estados: `DRAFT`, `PENDING_REVIEW`, `PUBLISHED`, `REJECTED`, `PAUSED`, `CANCELLED`; con el motivo de la última revisión (`reviewNote`). |
 | `TicketType` | Un tipo de entrada (Campo, Platea…) con precio, cupo y cantidad reservada.      |
 | `Order`      | Una compra de un evento, con su clave de acceso. Estados: `PENDING`, `PAID`, `EXPIRED`, `CANCELLED`. |
 | `Ticket`     | Una entrada individual con su código único y el precio pagado.                  |
@@ -108,18 +112,26 @@ Organizador (requieren sesión y solo acceden a eventos propios):
 |--------|----------------------------------------|---------------------------------------------------------|
 | GET    | `/organizer/events`                    | Mis eventos con ventas y recaudación                    |
 | POST   | `/organizer/events`                    | Crear evento (queda en borrador)                        |
+| PATCH  | `/organizer/events/:id`                | Editar nombre, descripción, lugar o fecha               |
 | GET    | `/organizer/events/:id`                | Detalle con estadísticas y últimas órdenes              |
 | POST   | `/organizer/events/:id/ticket-types`   | Agregar un tipo de entrada                              |
-| POST   | `/organizer/events/:id/publish`        | Publicar (requiere cuenta aprobada y al menos un tipo de entrada) |
+| POST   | `/organizer/events/:id/publish`        | Publicar (confiable) o enviar a revisión (no confiable) |
 | POST   | `/organizer/events/:id/door-token`     | Generar o regenerar el link de puerta                   |
 
 Administración (requieren sesión de administrador):
 
-| Método | Ruta                               | Descripción                          |
-|--------|------------------------------------|--------------------------------------|
-| GET    | `/admin/organizers`                | Organizadores y su estado            |
-| POST   | `/admin/organizers/:id/approve`    | Aprobar un organizador               |
-| POST   | `/admin/organizers/:id/revoke`     | Quitarle la aprobación               |
+| Método | Ruta                                  | Descripción                                        |
+|--------|---------------------------------------|----------------------------------------------------|
+| GET    | `/admin/events`                       | Eventos enviados o publicados, primero los que esperan revisión |
+| POST   | `/admin/events/:id/approve`           | Aprobar un evento en revisión                      |
+| POST   | `/admin/events/:id/reject`            | Rechazar con motivo: `{ "note": "..." }`           |
+| POST   | `/admin/events/:id/pause`             | Pausar un evento publicado, con motivo             |
+| POST   | `/admin/events/:id/resume`            | Reactivar un evento pausado                        |
+| GET    | `/admin/organizers`                   | Organizadores y su estado                          |
+| POST   | `/admin/organizers/:id/trust`         | Marcar como confiable (publica sin revisión)       |
+| POST   | `/admin/organizers/:id/untrust`       | Quitar la confianza                                |
+| POST   | `/admin/organizers/:id/suspend`       | Suspender                                          |
+| POST   | `/admin/organizers/:id/unsuspend`     | Reactivar la cuenta                                |
 
 App de puerta (requieren el header `x-door-token` con la clave del link de puerta):
 

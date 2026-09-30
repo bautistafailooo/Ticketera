@@ -9,7 +9,12 @@ datasource db {
 
 enum EventStatus {
   DRAFT
+  // Enviado por un organizador no confiable: espera que un administrador lo revise.
+  PENDING_REVIEW
   PUBLISHED
+  REJECTED
+  // Pausado por un administrador: sale de la cartelera y no vende.
+  PAUSED
   CANCELLED
 }
 
@@ -31,8 +36,10 @@ model User {
   name         String
   passwordHash String
   role         UserRole  @default(ORGANIZER)
-  // Un organizador solo puede publicar eventos una vez aprobado por un administrador.
-  approvedAt   DateTime?
+  // Confiable: publica eventos sin revisión. Si no, cada evento pasa por un administrador.
+  trustedAt    DateTime?
+  // Suspendido: no puede publicar y sus eventos salen de la cartelera.
+  suspendedAt  DateTime?
   createdAt    DateTime  @default(now())
   events       Event[]
   sessions     Session[]
@@ -58,6 +65,9 @@ model Event {
   status      EventStatus  @default(DRAFT)
   // Clave del link de puerta: permite validar entradas de este evento sin cuenta.
   doorToken   String?      @unique
+  // Motivo del último rechazo o pausa, visible para el organizador.
+  reviewNote  String?
+  reviewedAt  DateTime?
   createdAt   DateTime     @default(now())
   ticketTypes TicketType[]
   orders      Order[]

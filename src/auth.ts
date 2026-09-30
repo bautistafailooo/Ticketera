@@ -4,6 +4,7 @@ import type { Request, RequestHandler, Response } from "express";
 import { config } from "./config.js";
 import { prisma } from "./db.js";
 import { HttpError } from "./errors.js";
+import { isTrusted } from "./events.js";
 
 const scryptAsync = promisify(scrypt) as (password: string, salt: string, keylen: number) => Promise<Buffer>;
 
@@ -94,6 +95,7 @@ export function publicUser(user: SessionUser) {
     name: user.name,
     email: user.email,
     role: user.role,
-    approved: user.approvedAt !== null,
+    trusted: isTrusted(user),
+    suspended: user.suspendedAt !== null,
   };
 }

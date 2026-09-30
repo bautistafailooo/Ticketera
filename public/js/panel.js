@@ -1,6 +1,4 @@
-import { api, argentinaDate, escapeHtml, formatDate, formatPrice, setupPanelPage } from "/js/common.js";
-
-const STATUS = { DRAFT: "Borrador", PUBLISHED: "Publicado", CANCELLED: "Cancelado" };
+import { EVENT_STATUS, api, argentinaDate, escapeHtml, formatDate, formatPrice, setupPanelPage } from "/js/common.js";
 
 await setupPanelPage();
 
@@ -45,12 +43,15 @@ try {
       const percent = capacity ? Math.round((sold / capacity) * 100) : 0;
       return `
         <a class="card" href="/panel-evento.html?id=${encodeURIComponent(event.id)}">
-          <span class="badge ${event.status}">${STATUS[event.status]}</span>
+          <span class="badge ${escapeHtml(event.status)}">${EVENT_STATUS[event.status]}</span>
           <div class="date" style="margin-top: 8px">${escapeHtml(formatDate(event.startsAt))}</div>
           <h2>${escapeHtml(event.name)}</h2>
           <div class="muted">${escapeHtml(event.venue)}</div>
           <p><strong>${sold}</strong> de ${capacity} entradas · <strong>${formatPrice(revenueCents)}</strong> cobrados</p>
           <div class="progress" aria-label="${percent}% vendido"><span style="width: ${percent}%"></span></div>
+          ${event.visibility.visible
+            ? '<p class="visibility ok" style="margin: 12px 0 0">Visible en la cartelera</p>'
+            : `<p class="visibility" style="margin: 12px 0 0">No visible: ${escapeHtml(event.visibility.reason)}</p>`}
         </a>`;
     }).join("");
   }

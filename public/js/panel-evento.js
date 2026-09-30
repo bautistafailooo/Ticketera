@@ -1,6 +1,15 @@
-import { api, escapeHtml, formatDate, formatPrice, pesosToCents, setupPanelPage } from "/js/common.js";
+import {
+  EVENT_STATUS,
+  api,
+  argentinaDate,
+  argentinaLocalValue,
+  escapeHtml,
+  formatDate,
+  formatPrice,
+  pesosToCents,
+  setupPanelPage,
+} from "/js/common.js";
 
-const STATUS = { DRAFT: "Borrador", PUBLISHED: "Publicado", CANCELLED: "Cancelado" };
 const ORDER_STATUS = { PENDING: "Pendiente de pago", PAID: "Pagada", CANCELLED: "Cancelada", EXPIRED: "Vencida" };
 const timeFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "short",
@@ -8,7 +17,7 @@ const timeFormatter = new Intl.DateTimeFormat("es-AR", {
   timeZone: "America/Argentina/Buenos_Aires",
 });
 
-await setupPanelPage();
+const user = await setupPanelPage();
 
 const content = document.getElementById("content");
 const eventId = new URLSearchParams(location.search).get("id");
@@ -42,20 +51,30 @@ function render(event) {
       <td>${ORDER_STATUS[o.status]}</td>
     </tr>`).join("");
 
+  const canSubmit = event.status === "DRAFT" || event.status === "REJECTED";
+  const submitLabel = user.trusted ? "Publicar evento" : "Enviar a revisión";
+  const reviewNote = event.reviewNote && (event.status === "REJECTED" || event.status === "PAUSED")
+    ? `<p class="notice"><strong>${event.status === "REJECTED" ? "Motivo del rechazo" : "Motivo de la pausa"}:</strong> ${escapeHtml(event.reviewNote)}</p>`
+    : "";
+
   content.innerHTML = `
     <div class="page-head">
       <div>
-        <span class="badge ${event.status}">${STATUS[event.status]}</span>
+        <span class="badge ${escapeHtml(event.status)}">${EVENT_STATUS[event.status]}</span>
         <h1 style="margin-top: 8px">${escapeHtml(event.name)}</h1>
         <div class="muted">${escapeHtml(formatDate(event.startsAt))} · ${escapeHtml(event.venue)}</div>
       </div>
-      ${event.status === "DRAFT"
-        ? '<button type="button" id="publish">Publicar evento</button>'
-        : event.status === "PUBLISHED"
+      ${canSubmit
+        ? `<button type="button" id="publish">${submitLabel}</button>`
+        : event.visibility.visible
           ? `<a href="/evento.html?id=${encodeURIComponent(event.id)}">Ver en la cartelera →</a>`
           : ""}
     </div>
     <p id="publish-message" class="error" role="alert"></p>
+    ${event.visibility.visible
+      ? '<p class="visibility ok">Visible en la cartelera</p>'
+      : `<p class="visibility">No aparece en la cartelera: ${escapeHtml(event.visibility.reason)}</p>`}
+    ${reviewNote}
 
     <div class="stats">
       <div class="card stat"><div class="value">${t.sold} / ${t.capacity}</div><div class="label">Entradas vendidas</div></div>
@@ -73,7 +92,7 @@ function render(event) {
           </table></div>`
         : '<p class="muted">Agregá al menos un tipo de entrada para poder publicar el evento.</p>'}
 
-      <form id="new-ticket-type">
+      <form id="new-ticket-type" ${event.editable ? "" : "hidden"}>
         <h3 style="margin-top: 24px">Agregar tipo de entrada</h3>
         <div class="form-row">
           <div><label for="tt-name">Nombre</label><input id="tt-name" required placeholder="Campo, Platea, VIP…"></div>
@@ -84,6 +103,22 @@ function render(event) {
         <p id="tt-message" class="error" role="alert"></p>
       </form>
     </section>
+
+    ${event.editable ? `
+    <form class="card" id="edit-event">
+      <h2>Datos del evento</h2>
+      ${user.trusted ? "" : '<p class="muted">Los cambios se pueden hacer mientras el evento no esté aprobado.</p>'}
+      <label for="ev-name">Nombre</label>
+      <input id="ev-name" required maxlength="120" value="${escapeHtml(event.name)}">
+      <label for="ev-description">Descripción</label>
+      <input id="ev-description" maxlength="2000" value="${escapeHtml(event.description ?? "")}">
+      <div class="form-row">
+        <div><label for="ev-venue">Lugar</label><input id="ev-venue" required maxlength="200" value="${escapeHtml(event.venue)}"></div>
+        <div><label for="ev-startsAt">Fecha y hora</label><input id="ev-startsAt" type="datetime-local" required value="${argentinaLocalValue(event.startsAt)}"></div>
+      </div>
+      <button type="submit" class="button-secondary">Guardar cambios</button>
+      <p id="ev-message" class="error" role="alert"></p>
+    </form>` : ""}
 
     <section class="card">
       <h2>Control de acceso</h2>
@@ -142,6 +177,26 @@ function render(event) {
       await load();
     } catch (err) {
       document.getElementById("door-message").textContent = err.message;
+    }
+  });
+
+  document.getElementById("edit-event")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const message = document.getElementById("ev-message");
+    message.textContent = "";
+    try {
+      await api(`/organizer/events/${encodeURIComponent(event.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: document.getElementById("ev-name").value,
+          description: document.getElementById("ev-description").value,
+          venue: document.getElementById("ev-venue").value,
+          startsAt: argentinaDate(document.getElementById("ev-startsAt").value),
+        }),
+      });
+      await load();
+    } catch (err) {
+      message.textContent = err.message;
     }
   });
 

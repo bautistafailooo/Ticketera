@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
-import { onSaleWhere } from "./orders.js";
+import { onSaleWhere } from "../events.js";
 
 // Rutas públicas: solo muestran eventos a la venta (publicados, de organizadores
-// aprobados y que todavía no empezaron).
+// no suspendidos y que todavía no empezaron).
 export const eventsRouter = Router();
 
 const publicEvent = {

@@ -21,11 +21,25 @@
   </header>
 
   <main class="container">
-    <h1>Organizadores</h1>
-    <p class="muted">Solo los organizadores aprobados pueden publicar eventos y vender entradas. Si le quitás la aprobación a alguien, sus eventos salen de la cartelera.</p>
+    <h1>Administración</h1>
+    <p id="message" class="error" role="alert"></p>
+
+    <section>
+      <h2>Esperando revisión</h2>
+      <p class="muted">Eventos de organizadores no confiables. No aparecen en la cartelera hasta que los apruebes.</p>
+      <div id="pending" class="review-list"><p class="muted">Cargando…</p></div>
+    </section>
+
     <section class="card">
-      <div id="content"><p class="muted">Cargando…</p></div>
-      <p id="message" class="error" role="alert"></p>
+      <h2>Todos los eventos</h2>
+      <p class="muted">Pausar un evento lo saca de la cartelera y frena la venta. Las entradas ya vendidas siguen valiendo en la puerta.</p>
+      <div id="events"><p class="muted">Cargando…</p></div>
+    </section>
+
+    <section class="card">
+      <h2>Organizadores</h2>
+      <p class="muted">Los confiables publican sin revisión. Suspender a alguien saca de la cartelera todos sus eventos y le impide publicar.</p>
+      <div id="organizers"><p class="muted">Cargando…</p></div>
     </section>
   </main>
 

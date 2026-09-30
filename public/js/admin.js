@@ -1,68 +1,157 @@
-import { api, escapeHtml, setupPanelPage } from "/js/common.js";
+import { EVENT_STATUS, api, escapeHtml, formatDate, formatPrice, setupPanelPage } from "/js/common.js";
 
 const user = await setupPanelPage();
-const content = document.getElementById("content");
 const message = document.getElementById("message");
+const pendingEl = document.getElementById("pending");
+const eventsEl = document.getElementById("events");
+const organizersEl = document.getElementById("organizers");
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "short",
   timeZone: "America/Argentina/Buenos_Aires",
 });
 
-function statusOf(u) {
-  if (u.role === "ADMIN") return '<span class="badge PUBLISHED">Admin</span>';
-  return u.approvedAt
-    ? '<span class="badge PUBLISHED">Aprobado</span>'
-    : '<span class="badge">Pendiente</span>';
+const button = (label, action, id, secondary = false) =>
+  `<button type="button" class="button-inline${secondary ? " button-secondary" : ""}" data-action="${action}" data-id="${escapeHtml(id)}">${label}</button>`;
+
+function organizerLabel(o) {
+  return `${escapeHtml(o.name)} <span class="muted">(${escapeHtml(o.email)})</span>`;
 }
 
-function actionOf(u) {
-  if (u.role === "ADMIN") return "";
-  return u.approvedAt
-    ? `<button type="button" class="link-button" data-action="revoke" data-id="${escapeHtml(u.id)}">Quitar aprobación</button>`
-    : `<button type="button" class="button-inline" data-action="approve" data-id="${escapeHtml(u.id)}">Aprobar</button>`;
+function renderPending(events) {
+  const pending = events.filter((e) => e.status === "PENDING_REVIEW");
+  if (pending.length === 0) {
+    pendingEl.innerHTML = '<p class="muted">No hay eventos esperando revisión.</p>';
+    return;
+  }
+  pendingEl.innerHTML = pending.map((e) => `
+    <article class="card">
+      <div class="date">${escapeHtml(formatDate(e.startsAt))}</div>
+      <h3>${escapeHtml(e.name)}</h3>
+      <div class="muted">${escapeHtml(e.venue)}</div>
+      ${e.description ? `<p>${escapeHtml(e.description)}</p>` : ""}
+      <p>Organizador: ${organizerLabel(e.organizer)}</p>
+      <ul>
+        ${e.ticketTypes.map((t) => `<li>${escapeHtml(t.name)}: ${formatPrice(t.priceCents)} × ${t.capacity}</li>`).join("")}
+      </ul>
+      <div class="actions">
+        ${button("Aprobar", "approve-event", e.id)}
+        ${button("Rechazar", "reject-event", e.id, true)}
+      </div>
+    </article>`).join("");
+}
+
+function renderEvents(events) {
+  const others = events.filter((e) => e.status !== "PENDING_REVIEW");
+  if (others.length === 0) {
+    eventsEl.innerHTML = '<p class="muted">Todavía no hay eventos publicados.</p>';
+    return;
+  }
+  eventsEl.innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Evento</th><th>Fecha</th><th>Organizador</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        ${others.map((e) => `
+          <tr>
+            <td>${escapeHtml(e.name)}${e.reviewNote ? `<div class="muted">${escapeHtml(e.reviewNote)}</div>` : ""}</td>
+            <td>${escapeHtml(dateFormatter.format(new Date(e.startsAt)))}</td>
+            <td>${escapeHtml(e.organizer?.name ?? "—")}${e.organizer?.suspendedAt ? '<div class="error">Suspendido: no aparece en la cartelera</div>' : ""}</td>
+            <td><span class="badge ${escapeHtml(e.status)}">${EVENT_STATUS[e.status]}</span></td>
+            <td class="actions-cell"><div class="row-actions">
+              ${e.status === "PUBLISHED" ? button("Pausar", "pause-event", e.id, true) : ""}
+              ${e.status === "PAUSED" ? button("Reactivar", "resume-event", e.id) : ""}
+            </div></td>
+          </tr>`).join("")}
+      </tbody>
+    </table></div>`;
+}
+
+function organizerStatus(o) {
+  if (o.role === "ADMIN") return '<span class="badge PUBLISHED">Admin</span>';
+  if (o.suspendedAt) return '<span class="badge PAUSED">Suspendido</span>';
+  if (o.trustedAt) return '<span class="badge PUBLISHED">Confiable</span>';
+  return '<span class="badge">Con revisión</span>';
+}
+
+function organizerActions(o) {
+  if (o.role === "ADMIN") return "";
+  return [
+    o.trustedAt ? button("Quitar confianza", "untrust", o.id, true) : button("Marcar confiable", "trust", o.id),
+    o.suspendedAt ? button("Reactivar cuenta", "unsuspend", o.id) : button("Suspender", "suspend", o.id, true),
+  ].join("");
+}
+
+function renderOrganizers(users) {
+  organizersEl.innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Organizador</th><th>Alta</th><th class="num">Eventos</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        ${users.map((u) => `
+          <tr>
+            <td>${escapeHtml(u.name)}<div class="muted">${escapeHtml(u.email)}</div></td>
+            <td>${escapeHtml(dateFormatter.format(new Date(u.createdAt)))}</td>
+            <td class="num">${u._count.events}</td>
+            <td>${organizerStatus(u)}</td>
+            <td class="actions-cell"><div class="row-actions">${organizerActions(u)}</div></td>
+          </tr>`).join("")}
+      </tbody>
+    </table></div>`;
 }
 
 async function load() {
   try {
-    const users = await api("/admin/organizers");
-    content.innerHTML = `
-      <div class="table-wrap"><table>
-        <thead><tr><th>Organizador</th><th>Alta</th><th class="num">Eventos</th><th>Estado</th><th></th></tr></thead>
-        <tbody>
-          ${users.map((u) => `
-            <tr>
-              <td>${escapeHtml(u.name)}<div class="muted">${escapeHtml(u.email)}</div></td>
-              <td>${escapeHtml(dateFormatter.format(new Date(u.createdAt)))}</td>
-              <td class="num">${u._count.events}</td>
-              <td>${statusOf(u)}</td>
-              <td class="num">${actionOf(u)}</td>
-            </tr>`).join("")}
-        </tbody>
-      </table></div>`;
+    const [events, users] = await Promise.all([api("/admin/events"), api("/admin/organizers")]);
+    renderPending(events);
+    renderEvents(events);
+    renderOrganizers(users);
   } catch (err) {
-    content.innerHTML = `<p class="error">${escapeHtml(err.message)}</p>`;
+    message.textContent = err.message;
   }
 }
 
-content.addEventListener("click", async (e) => {
-  const button = e.target.closest("button[data-action]");
-  if (!button) return;
-  const { action, id } = button.dataset;
-  if (action === "revoke" && !confirm("Sus eventos van a salir de la cartelera y no va a poder vender. ¿Continuar?")) return;
-  button.disabled = true;
+// Qué hace cada botón: ruta y, si corresponde, qué preguntar antes.
+const ACTIONS = {
+  "approve-event": { path: (id) => `/admin/events/${id}/approve` },
+  "reject-event": { path: (id) => `/admin/events/${id}/reject`, note: "¿Por qué lo rechazás? El organizador va a ver este motivo." },
+  "pause-event": { path: (id) => `/admin/events/${id}/pause`, note: "¿Por qué lo pausás? El organizador va a ver este motivo." },
+  "resume-event": { path: (id) => `/admin/events/${id}/resume` },
+  trust: { path: (id) => `/admin/organizers/${id}/trust` },
+  untrust: { path: (id) => `/admin/organizers/${id}/untrust` },
+  suspend: {
+    path: (id) => `/admin/organizers/${id}/suspend`,
+    confirm: "Todos sus eventos van a salir de la cartelera y no va a poder publicar. ¿Continuar?",
+  },
+  unsuspend: { path: (id) => `/admin/organizers/${id}/unsuspend` },
+};
+
+document.querySelector("main").addEventListener("click", async (e) => {
+  const target = e.target.closest("button[data-action]");
+  if (!target) return;
+  const action = ACTIONS[target.dataset.action];
+  let body;
+  if (action.note) {
+    const note = prompt(action.note);
+    if (note === null) return;
+    if (!note.trim()) {
+      message.textContent = "Tenés que escribir un motivo.";
+      return;
+    }
+    body = JSON.stringify({ note });
+  }
+  if (action.confirm && !confirm(action.confirm)) return;
+  target.disabled = true;
   message.textContent = "";
   try {
-    await api(`/admin/organizers/${encodeURIComponent(id)}/${action}`, { method: "POST" });
+    await api(action.path(encodeURIComponent(target.dataset.id)), { method: "POST", body });
     await load();
   } catch (err) {
     message.textContent = err.message;
-    button.disabled = false;
+    target.disabled = false;
   }
 });
 
 if (user.role !== "ADMIN") {
-  content.innerHTML = '<p class="error">Esta página es solo para administradores.</p>';
+  document.querySelector("main").innerHTML = '<p class="error">Esta página es solo para administradores.</p>';
 } else {
   load();
 }

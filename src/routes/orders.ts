@@ -26,13 +26,6 @@ const createOrderSchema = z.object({
     .max(10),
 });
 
-// Evento a la venta: publicado, de un organizador aprobado y que todavía no empezó.
-export const onSaleWhere = () => ({
-  status: "PUBLISHED" as const,
-  startsAt: { gt: new Date() },
-  organizer: { approvedAt: { not: null } },
-});
-
 ordersRouter.post("/", rateLimits.orders, async (req, res) => {
   const { buyerName, buyerEmail, items } = createOrderSchema.parse(req.body);
 
@@ -60,7 +53,7 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
         throw new HttpError(400, "Una compra solo puede incluir entradas de un evento");
       }
       eventId = event.id;
-      if (event.status !== "PUBLISHED" || !event.organizer?.approvedAt) {
+      if (event.status !== "PUBLISHED" || !event.organizer || event.organizer.suspendedAt) {
         throw new HttpError(409, "El evento no está a la venta");
       }
       if (event.startsAt <= new Date()) {

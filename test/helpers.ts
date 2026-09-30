@@ -7,14 +7,26 @@ export const app = createApp();
 
 export const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
-export async function organizer(email = "org@example.com", { approved = true } = {}) {
+// Organizador logueado. Por defecto confiable (publica sin revisión) para simplificar los tests.
+export async function organizer(email = "org@example.com", { trusted = true } = {}) {
   const agent = request.agent(app);
   const res = await agent.post("/auth/register").send({ name: "Org", email, password: "secreta123" });
   expect(res.status).toBe(201);
-  if (approved) {
-    await prisma.user.update({ where: { email }, data: { approvedAt: new Date() } });
+  if (trusted) {
+    await prisma.user.update({ where: { email }, data: { trustedAt: new Date() } });
   }
   return agent;
+}
+
+// Crea un evento en borrador con un tipo de entrada, listo para publicar o enviar a revisión.
+export async function draftEvent(agent: ReturnType<typeof request.agent>, name = "Recital de prueba") {
+  const event = await agent.post("/organizer/events").send({ name, venue: "Estadio", startsAt: inDays(30) });
+  expect(event.status).toBe(201);
+  const ticketType = await agent
+    .post(`/organizer/events/${event.body.id}/ticket-types`)
+    .send({ name: "Campo", priceCents: 1000, capacity: 10 });
+  expect(ticketType.status).toBe(201);
+  return { eventId: event.body.id as string, ticketTypeId: ticketType.body.id as string };
 }
 
 export async function admin(email = "admin@example.com") {

@@ -18,13 +18,6 @@ describe("panel del organizador", () => {
     expect((await other.get("/organizer/events")).body).toEqual([]);
   });
 
-  it("un organizador sin aprobar prepara eventos pero no los publica", async () => {
-    const agent = await organizer("nuevo@example.com", { approved: false });
-    const event = await agent.post("/organizer/events").send({ name: "Borrador", venue: "Club", startsAt: inDays(5) });
-    await agent.post(`/organizer/events/${event.body.id}/ticket-types`).send({ name: "General", priceCents: 100, capacity: 10 });
-    const res = await agent.post(`/organizer/events/${event.body.id}/publish`);
-    expect(res.status).toBe(403);
-  });
 
   it("no publica un evento sin tipos de entrada", async () => {
     const agent = await organizer();
@@ -87,12 +80,14 @@ describe("cartelera pública", () => {
     expect(res.body.organizerId).toBeUndefined();
   });
 
-  it("al quitarle la aprobación a un organizador, sus eventos salen de la cartelera", async () => {
+  it("al suspender a un organizador, sus eventos salen de la cartelera", async () => {
     const { eventId, ticketTypeId } = await createPublishedEvent();
     const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
     const adm = await admin();
-    await adm.post(`/admin/organizers/${event.organizerId}/revoke`);
+    await adm.post(`/admin/organizers/${event.organizerId}/suspend`);
     expect((await request(app).get("/events")).body).toEqual([]);
     expect((await buy(ticketTypeId, 1)).status).toBe(409);
+    await adm.post(`/admin/organizers/${event.organizerId}/unsuspend`);
+    expect((await request(app).get("/events")).body).toHaveLength(1);
   });
 });
