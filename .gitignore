@@ -24,3 +24,7 @@ demo-uploads/
 mail-outbox/
 demo-outbox/
 test-backups/
+
+# Configuración y datos del servidor (no se suben nunca)
+.env.production
+data/
