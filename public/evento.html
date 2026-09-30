@@ -124,7 +124,7 @@
         <h1>${escapeHtml(event.name)}</h1>
         <p class="muted">${escapeHtml(formatDate(event.startsAt))} · ${escapeHtml(event.venue)}</p>
         <p>Orden <span class="code">${escapeHtml(order.id)}</span> · Total ${formatPrice(order.totalCents)}</p>
-        <p class="muted">Mostrá el QR de cada entrada en la puerta.</p>
+        <p class="muted">Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código que está debajo.</p>
         <div class="tickets">
           ${order.tickets.map((ticket) => `
             <div class="card ticket">

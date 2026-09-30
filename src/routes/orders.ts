@@ -1,8 +1,8 @@
-import { randomBytes } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { generateTicketCode } from "../ticket-code.js";
 
 export const ordersRouter = Router();
 
@@ -20,10 +20,6 @@ const createOrderSchema = z.object({
     )
     .min(1),
 });
-
-function generateTicketCode() {
-  return randomBytes(9).toString("base64url");
-}
 
 ordersRouter.post("/", async (req, res) => {
   const { buyerName, buyerEmail, items } = createOrderSchema.parse(req.body);

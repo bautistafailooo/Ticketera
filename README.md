@@ -41,7 +41,9 @@ Son páginas HTML simples en `public/`, sin paso de compilación. El pago todav�
 | `Event`      | Un evento de un organizador. Estados: `DRAFT`, `PUBLISHED`, `CANCELLED`. |
 | `TicketType` | Un tipo de entrada de un evento (Campo, Platea…) con precio y cupo.     |
 | `Order`      | Una compra. Estados: `PENDING`, `PAID`, `CANCELLED`.                   |
-| `Ticket`     | Una entrada individual, con un `code` único (lo que va en el QR).      |
+| `Ticket`     | Una entrada individual, con un `code` único (lo que va en el QR), ej. `K7QM-4XTP-9HWD`. |
+
+Los códigos de entrada usan el alfabeto Base32 de Crockford (sin I, L, O ni U) en 3 grupos de 4, para que se puedan dictar y tipear en la puerta. Al cargarlos a mano no importan las mayúsculas ni los guiones, y se corrige O→0 e I/L→1. Las entradas creadas con el formato anterior siguen siendo válidas.
 
 Los precios se guardan en centavos (`priceCents`, `totalCents`) para evitar errores de redondeo.
 

@@ -2,6 +2,7 @@ import { Router, type Request } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { resolveTicketCode } from "../ticket-code.js";
 
 // App de puerta: se autoriza con la clave del link de puerta del evento
 // (header x-door-token) y solo puede validar entradas de ese evento.
@@ -38,13 +39,14 @@ doorRouter.get("/event", async (req, res) => {
 
 doorRouter.post("/check-in", async (req, res) => {
   const event = await eventForDoor(req);
-  const { code } = checkInSchema.parse(req.body);
+  const { code: input } = checkInSchema.parse(req.body);
 
-  const ticket = await prisma.ticket.findUnique({
+  const code = await resolveTicketCode(input);
+  if (!code) throw new HttpError(404, "Entrada inválida");
+  const ticket = await prisma.ticket.findUniqueOrThrow({
     where: { code },
     include: { order: true, ticketType: true },
   });
-  if (!ticket) throw new HttpError(404, "Entrada inválida");
   if (ticket.ticketType.eventId !== event.id) {
     throw new HttpError(409, "Esta entrada es de otro evento");
   }
