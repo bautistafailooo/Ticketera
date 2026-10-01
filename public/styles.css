@@ -698,50 +698,41 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 
-/* ---------------- Logo de fondo ---------------- */
-/* El contorno de "ecko" detrás de las entradas, con ondas que salen como un eco.
-   Es "sticky" con alto 0: acompaña el scroll sin ocupar lugar ni tapar nada. */
+/* ---------------- Luces de fondo ---------------- */
+/* Dos luces suaves que flotan despacio detrás de las entradas. Son "sticky" con alto 0:
+   acompañan el scroll sin ocupar lugar ni tapar nada. */
 
-/* overflow-x: clip (no hidden) recorta lo que sobresale sin romper el "sticky". */
 .has-mark { position: relative; isolation: isolate; overflow-x: clip; }
-.bg-mark { position: sticky; top: 22vh; height: 0; z-index: -1; pointer-events: none; }
-.bg-mark svg {
+.bg-lights { position: sticky; top: 0; height: 0; z-index: -1; pointer-events: none; }
+.bg-lights span {
   position: absolute;
-  top: 0;
-  left: 50%;
-  width: 100%;
-  transform: translateX(-50%);
-  overflow: visible;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.5;
 }
-.bg-mark text {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 220px;
-  letter-spacing: -0.04em;
-  fill: none;
-  stroke: url(#mark-gradient);
-  transform-box: fill-box;
-  transform-origin: center;
+.bg-lights span:first-child {
+  top: 15vh;
+  left: 5%;
+  background: radial-gradient(circle, rgba(255, 77, 141, 0.55), transparent 65%);
+  animation: light-a 26s ease-in-out infinite alternate;
 }
-.mark-outline {
-  stroke-width: 2;
-  opacity: 0.45;
-  animation: mark-breathe 6s ease-in-out infinite;
+.bg-lights span:last-child {
+  top: 45vh;
+  right: 5%;
+  background: radial-gradient(circle, rgba(107, 123, 255, 0.55), transparent 65%);
+  animation: light-b 32s ease-in-out infinite alternate;
 }
-.mark-echo {
-  stroke-width: 1.4;
-  opacity: 0;
-  animation: mark-echo 7.5s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+@keyframes light-a {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(35vw, 20vh); }
+  100% { transform: translate(10vw, 40vh); }
 }
-.mark-echo:nth-child(3) { animation-delay: 2.5s; }
-.mark-echo:nth-child(4) { animation-delay: 5s; }
-@keyframes mark-breathe {
-  0%, 100% { opacity: 0.35; filter: drop-shadow(0 0 0 transparent); }
-  50% { opacity: 0.65; filter: drop-shadow(0 0 14px rgba(179, 92, 255, 0.6)); }
-}
-@keyframes mark-echo {
-  0% { opacity: 0.5; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.32); }
+@keyframes light-b {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(-40vw, -15vh); }
+  100% { transform: translate(-15vw, 20vh); }
 }
 
 /* ---------------- Responsive ---------------- */
@@ -776,7 +767,7 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
   .event-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
   .event-card .body { padding: 12px 12px 14px; }
   .event-card h3 { font-size: 1rem; }
-  .bg-mark svg { width: 150vw; }
+  .bg-lights span { width: 220px; height: 220px; }
   /* En las tarjetas angostas, "Últimas entradas" va abajo para no tapar la fecha. */
   .event-card .badge-slot { top: auto; bottom: 10px; left: 10px; right: 10px; }
   .event-card .badge-slot .badge { font-size: 0.65rem; padding: 4px 8px; }
