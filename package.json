@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Ticketera: API para venta de entradas a eventos",
   "scripts": {
-    "predev": "prisma generate",
+    "predev": "prisma migrate deploy && prisma generate",
     "dev": "tsx watch src/server.ts",
     "prestart": "prisma generate",
     "start": "prisma migrate deploy && tsx src/server.ts",
@@ -17,7 +17,7 @@
     "make-admin": "tsx src/make-admin.ts",
     "probar-mail": "tsx src/probar-mail.ts",
     "postinstall": "prisma generate",
-    "tunel": "prisma generate && node scripts/tunel.mjs"
+    "tunel": "prisma migrate deploy && prisma generate && node scripts/tunel.mjs"
   },
   "repository": {
     "type": "git",
