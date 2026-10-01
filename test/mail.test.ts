@@ -1,6 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { prisma } from "../src/db.js";
+import { describeSmtp, explainMailError, mailFromOf, smtpSettings } from "../src/mail/smtp.js";
 import { sentMails } from "../src/mail/transport.js";
 import { admin, app, buy, createPublishedEvent, draftEvent, getOrder, organizer, pay } from "./helpers.js";
 
@@ -128,5 +129,43 @@ describe("avisos de revisión", () => {
     await org.post(`/organizer/events/${eventId}/publish`);
     await adm.post(`/admin/events/${eventId}/approve`);
     await waitForMail((m) => m.to === "nuevo@example.com" && m.subject.includes("ya está a la venta"));
+  });
+});
+
+describe("configuración del envío", () => {
+  it("sin SMTP_HOST ni SMTP_URL no hay envío", () => {
+    expect(smtpSettings({})).toBeNull();
+  });
+
+  it("con SMTP_HOST arma la conexión y Gmail acepta la clave con espacios", () => {
+    expect(smtpSettings({ SMTP_HOST: "smtp.gmail.com", SMTP_USER: "yo@gmail.com", SMTP_PASS: "abcd efgh ijkl mnop" })).toEqual({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      requireTLS: false,
+      auth: { user: "yo@gmail.com", pass: "abcdefghijklmnop" },
+    });
+    expect(smtpSettings({ SMTP_HOST: "smtp-relay.brevo.com", SMTP_PORT: "587", SMTP_USER: "u", SMTP_PASS: "a b" })).toMatchObject({
+      secure: false,
+      requireTLS: true,
+      auth: { pass: "a b" },
+    });
+  });
+
+  it("SMTP_URL sigue funcionando y no se muestra la clave", () => {
+    const settings = smtpSettings({ SMTP_URL: "smtps://resend:re_secreta@smtp.resend.com:465" })!;
+    expect(settings).toBe("smtps://resend:re_secreta@smtp.resend.com:465");
+    expect(describeSmtp(settings)).toBe("smtp.resend.com:465");
+  });
+
+  it("el remitente por defecto es la cuenta que manda", () => {
+    expect(mailFromOf({ SMTP_USER: "yo@gmail.com" })).toBe("ecko <yo@gmail.com>");
+    expect(mailFromOf({ SMTP_USER: "resend", MAIL_FROM: "ecko <entradas@ecko.com.ar>" })).toBe("ecko <entradas@ecko.com.ar>");
+    expect(mailFromOf({ SMTP_USER: "resend" })).toBe("ecko <no-responder@ecko.local>");
+  });
+
+  it("explica los errores comunes", () => {
+    expect(explainMailError({ code: "EAUTH", responseCode: 535 })).toMatch(/contraseña de aplicación/);
+    expect(explainMailError({ responseCode: 450, response: "You can only send testing emails to your own email address" })).toMatch(/Resend/);
   });
 });

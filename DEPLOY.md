@@ -58,15 +58,17 @@ Sin configurar esto, los mails no salen: quedan guardados en `/opt/ecko/data/mai
    ```bash
    nano /opt/ecko/.env.production
    ```
-   y completá:
+   y completá (borrando la línea `SMTP_URL=` si quedó vacía):
    ```
-   SMTP_URL=smtps://resend:TU_API_KEY@smtp.resend.com:465
+   SMTP_HOST=smtp.resend.com
+   SMTP_USER=resend
+   SMTP_PASS=TU_API_KEY
    MAIL_FROM=ecko <onboarding@resend.dev>
    ```
    Guardá con `Ctrl+O`, Enter, y salí con `Ctrl+X`.
 3. Aplicá el cambio: `cd /opt/ecko && docker compose up -d`
 
-Mientras no verifiques un dominio propio en Resend, **solo llegan los mails dirigidos a tu propio email** (el de la cuenta de Resend). Alcanza para probar.
+Mientras no verifiques un dominio propio en Resend, **solo llegan los mails dirigidos a tu propio email** (el de la cuenta de Resend). Alcanza para probar. También podés usar Gmail, y para verificar el dominio seguí [MAILS.md](MAILS.md). Para probar el envío: `docker compose exec app npm run probar-mail -- tu@email.com`.
 
 ## 6. Qué probar
 

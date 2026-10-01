@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import nodemailer from "nodemailer";
 import { config } from "../config.js";
+import { describeSmtp, explainMailError } from "./smtp.js";
 import { esc } from "./templates.js";
 
 export type MailAttachment = { filename: string; content: Buffer; cid: string; contentType: string };
@@ -10,10 +11,23 @@ export type Mail = { to: string; subject: string; html: string; text: string; at
 // Mails enviados en modo "memory", para revisarlos en los tests.
 export const sentMails: Mail[] = [];
 
-const smtp = config.smtpUrl ? nodemailer.createTransport(config.smtpUrl) : null;
+const smtp = config.smtp ? nodemailer.createTransport(config.smtp) : null;
 
-if (!smtp && config.isProduction && config.mailTransport !== "memory") {
-  console.warn("SMTP_URL no está configurado: los mails no se van a enviar, solo se guardan en", config.mailOutboxDir);
+// Al arrancar el servidor: dice por dónde salen los mails y prueba que el usuario y la clave anden.
+export async function checkMailSetup() {
+  if (config.mailTransport === "memory") return;
+  if (!smtp || !config.smtp) {
+    const message = `Mails: no se envían, se guardan en ${config.mailOutboxDir} (configurá SMTP_HOST para mandarlos de verdad).`;
+    if (config.isProduction) console.warn(message);
+    else console.log(message);
+    return;
+  }
+  try {
+    await smtp.verify();
+    console.log(`Mails: se envían por ${describeSmtp(config.smtp)} como ${config.mailFrom}.`);
+  } catch (err) {
+    console.error(`Mails: no se pudo conectar a ${describeSmtp(config.smtp)}. ${explainMailError(err)}`);
+  }
 }
 
 // En desarrollo, guarda el mail como .html (con los QR incrustados) para abrirlo en el navegador.
@@ -48,5 +62,5 @@ export async function sendMail(input: Mail) {
 
 // Envía sin frenar la respuesta al usuario: si el mail falla, queda en el log.
 export function sendInBackground(label: string, task: () => Promise<unknown>) {
-  task().catch((err) => console.error(`No se pudo enviar el mail (${label}):`, err));
+  task().catch((err) => console.error(`No se pudo enviar el mail (${label}): ${explainMailError(err)}`));
 }

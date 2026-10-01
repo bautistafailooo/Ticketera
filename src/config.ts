@@ -1,5 +1,6 @@
 import "dotenv/config";
 import path from "node:path";
+import { mailFromOf, smtpSettings } from "./mail/smtp.js";
 
 const env = process.env;
 const isProduction = env.NODE_ENV === "production";
@@ -17,11 +18,11 @@ export const config = {
   uploadDir: path.resolve(env.UPLOAD_DIR ?? "uploads"),
   // Dirección pública del sitio, para los links de los mails (ej. https://ecko.com.ar).
   publicUrl: (env.PUBLIC_URL ?? `http://localhost:${env.PORT ?? 3000}`).replace(/\/$/, ""),
-  // Remitente de los mails.
-  mailFrom: env.MAIL_FROM ?? "ecko <no-responder@ecko.local>",
-  // Servidor de envío, ej. smtps://usuario:clave@smtp.resend.com:465. Sin esto,
+  // Remitente de los mails (si falta, la cuenta de SMTP_USER).
+  mailFrom: mailFromOf(env),
+  // Servidor de envío (SMTP_HOST/SMTP_USER/SMTP_PASS o SMTP_URL, ver src/mail/smtp.ts). Sin esto,
   // los mails se guardan como archivos en mailOutboxDir para verlos en el navegador.
-  smtpUrl: env.SMTP_URL,
+  smtp: smtpSettings(env),
   mailOutboxDir: path.resolve(env.MAIL_OUTBOX_DIR ?? "mail-outbox"),
   // "memory" guarda los mails en memoria (tests).
   mailTransport: env.MAIL_TRANSPORT,

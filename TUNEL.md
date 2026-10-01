@@ -39,5 +39,5 @@ SITE_PASSWORD=la-que-quieras
 
 - **La base de datos es la de tu compu.** Lo que carguen los que prueban (eventos, compras, cuentas) queda en tu `dev.db`.
 - **Tu base de prueba tiene una cuenta administrador con contraseña conocida** (`organizador@ticketera.test` / `ticketera123`). La contraseña del sitio impide que entre alguien de afuera, pero **no compartas esa cuenta**. Si vas a dejar entrar a otras personas, creá tu propia cuenta y hacela administrador con `npm run make-admin -- tu@email.com`.
-- Los mails no salen de verdad: se guardan en la carpeta `mail-outbox/`, igual que con `npm run dev`. Los links que tienen ya apuntan a la dirección del túnel.
+- Los mails se guardan en la carpeta `mail-outbox/` hasta que configures el envío ([MAILS.md](MAILS.md)). Los links de los mails apuntan a la dirección del túnel.
 - Mientras el túnel está abierto, no cierres la terminal ni suspendas la compu.

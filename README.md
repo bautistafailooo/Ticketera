@@ -58,7 +58,7 @@ En el panel, cada evento indica si está visible en la cartelera y, si no, por q
 - al organizador, cuando su evento se aprueba, se rechaza (con el motivo), se pausa o se reactiva;
 - a los administradores, cuando llega un evento para revisar.
 
-Sin `SMTP_URL`, los mails no se envían: se guardan como `.html` en `mail-outbox/` para abrirlos en el navegador. Los mails se mandan sin frenar la respuesta: si el envío falla, queda en el log.
+Para mandarlos de verdad, seguí [MAILS.md](MAILS.md) (Gmail para probar, Resend con dominio para el lanzamiento) y probá con `npm run probar-mail -- tu@email.com`. Sin configurar, los mails no se envían: se guardan como `.html` en `mail-outbox/` para abrirlos en el navegador. Al arrancar, el servidor dice por dónde salen y verifica el usuario y la clave. Los mails se mandan sin frenar la respuesta: si el envío falla, queda en el log.
 
 **Códigos de entrada.** Formato `K7QM-4XTP-9HWD` (Base32 de Crockford, sin I, L, O ni U) para que se puedan dictar. Al cargarlos a mano no importan mayúsculas, espacios ni guiones, y se corrige O→0 e I/L→1. Las entradas con el formato anterior siguen siendo válidas.
 
@@ -87,8 +87,11 @@ Sin `SMTP_URL`, los mails no se envían: se guardan como `.html` en `mail-outbox
 | `TRUST_PROXY`         | `0`                            | Cantidad de proxies delante del servidor (para leer la IP real) |
 | `UPLOAD_DIR`          | `uploads`                      | Carpeta de los flyers. En producción, un disco persistente     |
 | `PUBLIC_URL`          | `http://localhost:3000`        | Dirección pública del sitio, para los links de los mails       |
-| `SMTP_URL`            | —                              | Servidor de envío de mails, ej. `smtps://usuario:clave@smtp.resend.com:465` |
-| `MAIL_FROM`           | `ecko <no-responder@ecko.local>` | Remitente de los mails                                       |
+| `SMTP_HOST`           | —                              | Servidor de envío de mails, ej. `smtp.gmail.com` (ver [MAILS.md](MAILS.md)) |
+| `SMTP_PORT`           | `465`                          | Puerto del servidor de mails (465 o 587)                       |
+| `SMTP_USER` / `SMTP_PASS` | —                          | Usuario y clave del servidor de mails                          |
+| `SMTP_URL`            | —                              | Alternativa en una línea: `smtps://usuario:clave@servidor:465` |
+| `MAIL_FROM`           | `ecko <SMTP_USER>`             | Remitente de los mails                                         |
 | `ADMIN_EMAIL`         | —                              | La cuenta con este email pasa a ser administrador al arrancar el servidor |
 | `SITE_PASSWORD`       | —                              | Si está, todo el sitio pide esta contraseña (modo privado) y no se indexa |
 | `BACKUP_DIR`          | —                              | Carpeta de las copias diarias de la base (se guardan las últimas 7) |
@@ -172,7 +175,7 @@ App de puerta (requieren el header `x-door-token` con la clave del link de puert
 
 1. **Pagos reales** con Mercado Pago (Checkout Pro + webhook). Contemplar un pago que llega después de que la orden venció.
 2. **Publicar online** con https y PostgreSQL (cambiar `provider` y el adapter de Prisma). Detrás de un proxy, configurar `TRUST_PROXY`. Los flyers necesitan un disco persistente (`UPLOAD_DIR`) o un almacenamiento de archivos (S3, R2).
-3. **Configurar el envío de mails** (`SMTP_URL`, `MAIL_FROM`, `PUBLIC_URL`) con un proveedor como Resend o Brevo, con el dominio verificado (SPF y DKIM) para que no caigan en spam.
+3. **Configurar el envío de mails** (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `PUBLIC_URL`, ver [MAILS.md](MAILS.md)) con un proveedor como Resend o Brevo, con el dominio verificado (SPF y DKIM) para que no caigan en spam.
 4. **Límites de pedidos compartidos** (por ejemplo con Redis) si se corre más de una instancia del servidor.
 5. `npm audit` marca alertas en la herramienta de línea de comandos de Prisma (soporte MySQL y lectura de su configuración). No afectan a la ticketera: revisar al actualizar Prisma.
 6. **Más gestión de eventos**: editar, cancelar con reintegros, imagen, cierre de venta.

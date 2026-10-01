@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { backupDatabase } from "./backup.js";
 import { config } from "./config.js";
 import { prisma } from "./db.js";
+import { checkMailSetup } from "./mail/transport.js";
 import { cleanupSessions, expireOrders } from "./orders.js";
 
 // SQLite: modo WAL (lecturas y escrituras a la vez) y espera en vez de fallar si la base está ocupada.
@@ -43,6 +44,7 @@ const server = createApp().listen(config.port, (error?: Error & { code?: string 
   if (config.simulatedPayments) {
     console.log("Pagos simulados activados: las compras se pueden confirmar sin cobrar.");
   }
+  void checkMailSetup();
 });
 
 // Cada minuto: vence órdenes impagas (liberando su cupo) y borra sesiones vencidas.
