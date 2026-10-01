@@ -46,7 +46,7 @@ En el panel, cada evento indica si está visible en la cartelera y, si no, por q
 
 **Compras.** Al comprar se crea una orden pendiente que reserva las entradas por 15 minutos (`ORDER_TTL_MINUTES`). Si no se paga a tiempo, vence y el cupo se libera. Las entradas gratis se confirman al instante. Cada orden tiene una clave secreta: sin ella nadie puede ver la orden, y los códigos de las entradas se entregan recién cuando está paga.
 
-**Pago.** Por ahora el pago es simulado (`SIMULATED_PAYMENTS`): viene activado en desarrollo y **apagado en producción**. Se reemplazará por Mercado Pago.
+**Pago.** Con Mercado Pago en modo *split* ([MERCADOPAGO.md](MERCADOPAGO.md)): cada organizador conecta su cuenta (OAuth), la plata de las entradas va a su cuenta y el cargo por servicio (`SERVICE_FEE_PERCENT`, lo paga el comprador) llega a la cuenta de ecko como `marketplace_fee`. Los pagos se confirman consultando a Mercado Pago con el token del organizador (por la notificación o al volver del checkout), verificando orden, estado y monto. Un pago que llega con la reserva vencida confirma la compra si todavía hay lugar; si no, se devuelve solo. Los tokens se guardan cifrados con una clave derivada de `MP_CLIENT_SECRET`. Para probar sin cobrar existe el pago simulado (`SIMULATED_PAYMENTS`): activado en desarrollo y **apagado en producción**.
 
 **Puerta.** El organizador genera un link de puerta por evento con una clave secreta. Quien lo tenga puede validar entradas de ese evento (y de ningún otro), sin crear cuenta. Si se filtra, se regenera y el anterior deja de funcionar.
 
@@ -84,6 +84,8 @@ Para mandarlos de verdad, seguí [MAILS.md](MAILS.md) (Gmail para probar, Resend
 | `NODE_ENV`            | —                              | `production` activa cookies `Secure`, HSTS y apaga el pago simulado |
 | `ORDER_TTL_MINUTES`   | `15`                           | Minutos para pagar antes de que la orden venza                |
 | `SIMULATED_PAYMENTS`  | `true` en desarrollo, `false` en producción | Permite confirmar compras sin cobrar             |
+| `MP_CLIENT_ID` / `MP_CLIENT_SECRET` | —                | Aplicación de Mercado Pago de ecko (ver [MERCADOPAGO.md](MERCADOPAGO.md)) |
+| `SERVICE_FEE_PERCENT` | `10`                           | Cargo por servicio que paga el comprador (% de las entradas)   |
 | `TRUST_PROXY`         | `0`                            | Cantidad de proxies delante del servidor (para leer la IP real) |
 | `UPLOAD_DIR`          | `uploads`                      | Carpeta de los flyers. En producción, un disco persistente     |
 | `PUBLIC_URL`          | `http://localhost:3000`        | Dirección pública del sitio, para los links de los mails       |
@@ -120,7 +122,10 @@ Públicos:
 | GET    | `/events/:id`                     | Detalle de un evento a la venta                         |
 | POST   | `/orders`                         | Comprar entradas (devuelve el id y la clave de la orden) |
 | GET    | `/orders/:id`                     | Ver la orden (header `x-order-token`)                   |
+| POST   | `/orders/:id/checkout`            | Link para pagar con Mercado Pago (header `x-order-token`) |
+| POST   | `/orders/:id/check-payment`       | Consultar el pago en Mercado Pago (header `x-order-token`) |
 | POST   | `/orders/:id/simulate-payment`    | Pago simulado (header `x-order-token`; solo si está activado) |
+| POST   | `/payments/mercadopago/webhook`   | Notificaciones de Mercado Pago (`?order=<id>`)          |
 | POST   | `/orders/:id/resend-email`        | Reenviar las entradas por mail (header `x-order-token`) |
 | GET    | `/tickets/:code/qr.svg`           | Imagen QR de una entrada paga                           |
 
@@ -148,6 +153,10 @@ Organizador (requieren sesión y solo acceden a eventos propios):
 | PUT    | `/organizer/events/:id/image`          | Subir o reemplazar el flyer (el cuerpo es la imagen)    |
 | DELETE | `/organizer/events/:id/image`          | Quitar el flyer                                         |
 | POST   | `/organizer/events/:id/door-token`     | Generar o regenerar el link de puerta                   |
+| GET    | `/organizer/mercadopago`               | Estado de la cuenta de Mercado Pago                     |
+| GET    | `/organizer/mercadopago/connect`       | Ir a Mercado Pago a autorizar a ecko (OAuth)            |
+| GET    | `/organizer/mercadopago/callback`      | Vuelta de Mercado Pago (verifica `state`)               |
+| POST   | `/organizer/mercadopago/disconnect`    | Desconectar la cuenta                                   |
 
 Administración (requieren sesión de administrador):
 
@@ -173,7 +182,7 @@ App de puerta (requieren el header `x-door-token` con la clave del link de puert
 
 ## Pendiente antes de producción
 
-1. **Pagos reales** con Mercado Pago (Checkout Pro + webhook). Contemplar un pago que llega después de que la orden venció.
+1. **Probar Mercado Pago con cuentas de prueba** y después con la cuenta real ([MERCADOPAGO.md](MERCADOPAGO.md)). Consultar con un contador la facturación del cargo por servicio.
 2. **Publicar online** con https y PostgreSQL (cambiar `provider` y el adapter de Prisma). Detrás de un proxy, configurar `TRUST_PROXY`. Los flyers necesitan un disco persistente (`UPLOAD_DIR`) o un almacenamiento de archivos (S3, R2).
 3. **Configurar el envío de mails** (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `PUBLIC_URL`, ver [MAILS.md](MAILS.md)) con un proveedor como Resend o Brevo, con el dominio verificado (SPF y DKIM) para que no caigan en spam.
 4. **Límites de pedidos compartidos** (por ejemplo con Redis) si se corre más de una instancia del servidor.

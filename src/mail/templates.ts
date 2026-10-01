@@ -58,6 +58,7 @@ const muted = (html: string) => p(html, "color:#6b6b80;font-size:14px");
 type OrderMail = {
   buyerName: string;
   totalCents: number;
+  feeCents: number;
   orderUrl: string;
   event: { name: string; venue: string; startsAt: Date };
   tickets: { ticketType: string; code: string; cid: string }[];
@@ -87,7 +88,7 @@ export function orderConfirmed(order: OrderMail) {
     body: `
       ${h1("¡Tus entradas están listas!")}
       ${p(`Hola ${esc(order.buyerName)}, tu compra para <b>${esc(order.event.name)}</b> está confirmada.`)}
-      ${p(`<b>Cuándo:</b> ${esc(formatDate(order.event.startsAt))}<br><b>Dónde:</b> ${esc(order.event.venue)}<br><b>Total:</b> ${esc(formatPrice(order.totalCents))}`)}
+      ${p(`<b>Cuándo:</b> ${esc(formatDate(order.event.startsAt))}<br><b>Dónde:</b> ${esc(order.event.venue)}<br><b>Total:</b> ${esc(formatPrice(order.totalCents))}${order.feeCents > 0 ? ` (incluye ${esc(formatPrice(order.feeCents))} de cargo por servicio)` : ""}`)}
       ${muted("Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código.")}
       ${tickets}
       ${button(order.orderUrl, "Ver mis entradas")}
@@ -147,4 +148,20 @@ export function eventPendingReview({ eventName, organizerName, url }: { eventNam
       ${button(url, "Revisar eventos")}`,
   });
   return { subject: `Evento para revisar: ${eventName}`, html, text: `${organizerName} envió "${eventName}" a revisión.\n${url}` };
+}
+
+export function paymentRefunded({ buyerName, eventName, totalCents, eventUrl }: { buyerName: string; eventName: string; totalCents: number; eventUrl: string }) {
+  const html = layout({
+    preheader: `Te devolvimos el pago de ${eventName}`,
+    body: `
+      ${h1("Te devolvimos el pago")}
+      ${p(`Hola ${esc(buyerName)}, tu pago de <b>${esc(formatPrice(totalCents))}</b> para <b>${esc(eventName)}</b> se aprobó después de que venciera la reserva, y para entonces las entradas ya no estaban disponibles.`)}
+      ${p("Te devolvimos el total por Mercado Pago. Según el medio de pago, puede tardar unos días en verse en tu cuenta o tu tarjeta.")}
+      ${button(eventUrl, "Ver el evento")}`,
+  });
+  return {
+    subject: `Te devolvimos el pago de ${eventName}`,
+    html,
+    text: `Hola ${buyerName}, tu pago de ${formatPrice(totalCents)} para ${eventName} llegó cuando la reserva ya había vencido y no quedaban entradas. Te devolvimos el total por Mercado Pago.\n${eventUrl}`,
+  };
 }

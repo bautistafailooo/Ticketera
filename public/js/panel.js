@@ -11,6 +11,45 @@ import {
 
 await setupPanelPage();
 
+// Cuenta de Mercado Pago: las ventas se cobran ahí.
+const mpCard = document.getElementById("mercadopago");
+const mpResult = new URLSearchParams(location.search).get("mp");
+if (mpResult) history.replaceState(null, "", "/panel.html");
+
+async function loadMercadoPago() {
+  const mp = await api("/organizer/mercadopago");
+  if (!mp.available) return;
+  const result = mpResult === "ok"
+    ? '<p class="notice ok">¡Listo! Tu cuenta de Mercado Pago quedó conectada.</p>'
+    : mpResult === "error"
+      ? '<p class="notice danger">No se pudo conectar la cuenta de Mercado Pago. Probá de nuevo.</p>'
+      : "";
+  mpCard.hidden = false;
+  mpCard.innerHTML = mp.connected
+    ? `${result}
+      <div class="mp-row">
+        <div>
+          <h2 style="margin: 0 0 4px">Mercado Pago <span class="badge ok">Conectado</span></h2>
+          <p class="muted small" style="margin: 0">Lo que vendas se acredita en tu cuenta de Mercado Pago. El comprador paga aparte el cargo por servicio de ecko.</p>
+        </div>
+        <button type="button" class="btn btn-secondary" id="mp-disconnect">Desconectar</button>
+      </div>`
+    : `${result}
+      <div class="mp-row">
+        <div>
+          <h2 style="margin: 0 0 4px">Cobrá con Mercado Pago</h2>
+          <p class="muted small" style="margin: 0">Conectá tu cuenta para recibir el dinero de tus ventas directamente.${mp.required ? " <strong>Es necesario para vender entradas pagas.</strong>" : ""}</p>
+        </div>
+        <a class="btn btn-gradient" href="/organizer/mercadopago/connect">Conectar Mercado Pago</a>
+      </div>`;
+  document.getElementById("mp-disconnect")?.addEventListener("click", async () => {
+    if (!confirm("Si desconectás tu cuenta, tus eventos no van a poder cobrar entradas hasta que la vuelvas a conectar. ¿Seguro?")) return;
+    await api("/organizer/mercadopago/disconnect", { method: "POST" });
+    await loadMercadoPago();
+  });
+}
+loadMercadoPago().catch(() => {});
+
 const form = document.getElementById("new-event");
 const startsAt = document.getElementById("startsAt");
 // No se pueden elegir fechas pasadas (hora de Argentina, UTC-3).

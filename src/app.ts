@@ -8,6 +8,7 @@ import { doorRouter } from "./routes/door.js";
 import { eventsRouter } from "./routes/events.js";
 import { ordersRouter } from "./routes/orders.js";
 import { organizerRouter } from "./routes/organizer.js";
+import { paymentsRouter } from "./routes/payments.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { rateLimits, securityHeaders, sitePrivacy } from "./security.js";
 
@@ -46,6 +47,7 @@ export function createApp() {
   app.use("/door", api, doorRouter);
   app.use("/events", api, eventsRouter);
   app.use("/orders", api, ordersRouter);
+  app.use("/payments", api, paymentsRouter);
   app.use("/tickets", rateLimits.api, ticketsRouter);
 
   app.use(errorHandler);

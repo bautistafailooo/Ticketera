@@ -10,7 +10,8 @@ describe("compras", () => {
     const { ticketTypeId } = await createPublishedEvent();
     const res = await buy(ticketTypeId, 2);
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ status: "PENDING", totalCents: 3000000 });
+    // 2 × $15.000 + 10% de cargo por servicio.
+    expect(res.body).toMatchObject({ status: "PENDING", totalCents: 3300000, feeCents: 300000 });
     expect(res.body.accessToken).toBeTruthy();
     const minutes = (new Date(res.body.expiresAt).getTime() - Date.now()) / 60000;
     expect(minutes).toBeGreaterThan(config.orderTtlMinutes - 1);

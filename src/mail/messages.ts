@@ -30,12 +30,28 @@ export async function sendOrderConfirmation(orderId: string) {
   const message = templates.orderConfirmed({
     buyerName: order.buyerName,
     totalCents: order.totalCents,
+    feeCents: order.feeCents,
     orderUrl: orderUrl(order),
     event: order.event,
     tickets,
   });
   await sendMail({ to: order.buyerEmail, ...message, attachments });
   await prisma.order.update({ where: { id: order.id }, data: { emailedAt: new Date() } });
+}
+
+// Avisa al comprador que su pago llegó tarde y se le devolvió.
+export async function sendPaymentRefunded(orderId: string) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { event: { select: { id: true, name: true } } } });
+  if (!order) return;
+  await sendMail({
+    to: order.buyerEmail,
+    ...templates.paymentRefunded({
+      buyerName: order.buyerName,
+      eventName: order.event.name,
+      totalCents: order.totalCents,
+      eventUrl: `${config.publicUrl}/evento.html?id=${encodeURIComponent(order.event.id)}`,
+    }),
+  });
 }
 
 export async function sendPasswordReset(user: { email: string; name: string }, token: string) {

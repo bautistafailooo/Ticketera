@@ -53,7 +53,7 @@ function renderEvents(events) {
   }
   eventsEl.innerHTML = `
     <div class="table-wrap"><table>
-      <thead><tr><th>Evento</th><th>Fecha</th><th>Organizador</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Evento</th><th>Fecha</th><th>Organizador</th><th>Estado</th><th>Mercado Pago</th><th></th></tr></thead>
       <tbody>
         ${others.map((e) => `
           <tr>
@@ -88,7 +88,7 @@ function organizerActions(o) {
 function renderOrganizers(users) {
   organizersEl.innerHTML = `
     <div class="table-wrap"><table>
-      <thead><tr><th>Organizador</th><th>Alta</th><th class="num">Eventos</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Organizador</th><th>Alta</th><th class="num">Eventos</th><th>Estado</th><th>Mercado Pago</th><th></th></tr></thead>
       <tbody>
         ${users.map((u) => `
           <tr>
@@ -96,6 +96,7 @@ function renderOrganizers(users) {
             <td>${escapeHtml(dateFormatter.format(new Date(u.createdAt)))}</td>
             <td class="num">${u._count.events}</td>
             <td>${organizerStatus(u)}</td>
+            <td>${u.mpConnectedAt ? '<span class="badge ok">Conectado</span>' : '<span class="faint small">Sin conectar</span>'}</td>
             <td><div class="row-actions">${organizerActions(u)}</div></td>
           </tr>`).join("")}
       </tbody>

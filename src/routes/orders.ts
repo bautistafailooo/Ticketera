@@ -4,10 +4,14 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import type { User } from "../../generated/prisma/client.js";
 import { expireOrders } from "../orders.js";
 import { rateLimits } from "../security.js";
 import { sendOrderConfirmation } from "../mail/messages.js";
 import { sendInBackground } from "../mail/transport.js";
+import { serviceFee } from "../payments/fee.js";
+import { createPreference, sellerToken } from "../payments/mercadopago.js";
+import { markOrderPaid, syncOrderPayments } from "../payments/process.js";
 import { generateTicketCode } from "../ticket-code.js";
 
 export const ordersRouter = Router();
@@ -40,8 +44,9 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
   await expireOrders();
 
   const order = await prisma.$transaction(async (tx) => {
-    let totalCents = 0;
+    let subtotalCents = 0;
     let eventId: string | null = null;
+    let organizer: User | null = null;
     const ticketsToCreate: { ticketTypeId: string; code: string; priceCents: number }[] = [];
 
     for (const item of items) {
@@ -55,6 +60,7 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
         throw new HttpError(400, "Una compra solo puede incluir entradas de un evento");
       }
       eventId = event.id;
+      organizer = event.organizer;
       if (event.status !== "PUBLISHED" || !event.organizer || event.organizer.suspendedAt) {
         throw new HttpError(409, "El evento no está a la venta");
       }
@@ -74,7 +80,7 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
         throw new HttpError(409, `No quedan suficientes entradas "${ticketType.name}"`);
       }
 
-      totalCents += ticketType.priceCents * item.quantity;
+      subtotalCents += ticketType.priceCents * item.quantity;
       for (let i = 0; i < item.quantity; i++) {
         ticketsToCreate.push({
           ticketTypeId: ticketType.id,
@@ -84,14 +90,20 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
       }
     }
 
-    const free = totalCents === 0;
+    const free = subtotalCents === 0;
+    if (!free && !canCharge(organizer!)) {
+      throw new HttpError(409, "Este evento todavía no puede cobrar entradas. Probá más tarde.");
+    }
+    const feeCents = serviceFee(subtotalCents);
     return tx.order.create({
       data: {
         eventId: eventId!,
         accessToken: randomBytes(24).toString("base64url"),
         buyerName,
         buyerEmail,
-        totalCents,
+        totalCents: subtotalCents + feeCents,
+        feeCents,
+        paidAt: free ? new Date() : null,
         // Las entradas gratis quedan confirmadas; las pagas esperan el pago.
         status: free ? "PAID" : "PENDING",
         expiresAt: free ? null : new Date(Date.now() + config.orderTtlMinutes * 60 * 1000),
@@ -108,9 +120,15 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
     accessToken: order.accessToken,
     status: order.status,
     totalCents: order.totalCents,
+    feeCents: order.feeCents,
     expiresAt: order.expiresAt,
   });
 });
+
+// Si el organizador puede recibir pagos: con su Mercado Pago conectado, o con el pago simulado.
+function canCharge(organizer: Pick<User, "mpAccessToken">) {
+  return config.simulatedPayments || Boolean(config.mercadoPago && organizer.mpAccessToken);
+}
 
 // La orden solo se puede ver con su clave (header x-order-token).
 async function findOrderWithToken(req: Request) {
@@ -133,21 +151,37 @@ ordersRouter.get("/:id", async (req, res) => {
   const full = await prisma.order.findUniqueOrThrow({
     where: { id: order.id },
     include: {
-      event: { select: { id: true, name: true, venue: true, startsAt: true, imageFile: true } },
+      event: {
+        select: {
+          id: true,
+          name: true,
+          venue: true,
+          startsAt: true,
+          imageFile: true,
+          organizer: { select: { mpAccessToken: true } },
+        },
+      },
       tickets: { include: { ticketType: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
     },
   });
   const paid = full.status === "PAID";
+  const { organizer, ...event } = full.event;
   res.json({
     id: full.id,
     status: full.status,
     buyerName: full.buyerName,
     buyerEmail: full.buyerEmail,
     totalCents: full.totalCents,
+    feeCents: full.feeCents,
     expiresAt: full.expiresAt,
     createdAt: full.createdAt,
-    event: full.event,
-    simulatedPayments: config.simulatedPayments,
+    refunded: full.refundedAt !== null,
+    event,
+    // Cómo se puede pagar: con Mercado Pago (si el organizador conectó su cuenta) y, en pruebas, simulado.
+    payment: {
+      mercadoPago: Boolean(config.mercadoPago && organizer?.mpAccessToken),
+      simulated: config.simulatedPayments,
+    },
     // Los códigos se entregan recién cuando la orden está paga.
     tickets: full.tickets.map((t) => ({
       ticketType: t.ticketType.name,
@@ -157,18 +191,59 @@ ordersRouter.get("/:id", async (req, res) => {
   });
 });
 
-// Pago simulado para desarrollo. Se reemplazará por Mercado Pago.
+// Pago con Mercado Pago: crea el checkout con el token del organizador y devuelve el link para pagar.
+// La vuelta (y la notificación de Mercado Pago) llevan solo el id de la orden, no su clave.
+ordersRouter.post("/:id/checkout", rateLimits.orders, async (req, res) => {
+  const order = await findOrderWithToken(req);
+  if (order.status !== "PENDING" || !order.expiresAt || order.expiresAt <= new Date()) {
+    throw new HttpError(409, order.status === "PAID" ? "La orden ya está paga" : "La reserva venció");
+  }
+  const full = await prisma.order.findUniqueOrThrow({
+    where: { id: order.id },
+    include: { event: { include: { organizer: true } }, tickets: { include: { ticketType: true } } },
+  });
+  const seller = full.event.organizer;
+  if (!config.mercadoPago || !seller?.mpAccessToken) {
+    throw new HttpError(409, "Este evento todavía no puede cobrar con Mercado Pago");
+  }
+
+  const lines = new Map<string, { title: string; quantity: number; unitPriceCents: number }>();
+  for (const t of full.tickets) {
+    const line = lines.get(t.ticketTypeId) ?? { title: `${full.event.name} - ${t.ticketType.name}`, quantity: 0, unitPriceCents: t.priceCents };
+    line.quantity++;
+    lines.set(t.ticketTypeId, line);
+  }
+  const items = [...lines.values()];
+  if (full.feeCents > 0) items.push({ title: "Cargo por servicio", quantity: 1, unitPriceCents: full.feeCents });
+
+  const preference = await createPreference(await sellerToken(seller), {
+    orderId: full.id,
+    items,
+    feeCents: full.feeCents,
+    buyerEmail: full.buyerEmail,
+    expiresAt: full.expiresAt!,
+    returnUrl: `${config.publicUrl}/orden.html?volver=${encodeURIComponent(full.id)}`,
+    notificationUrl: `${config.publicUrl}/payments/mercadopago/webhook?order=${encodeURIComponent(full.id)}`,
+  });
+  res.json({ url: preference.init_point });
+});
+
+// Al volver de Mercado Pago: consulta el pago y actualiza la orden (por si la notificación no llegó).
+ordersRouter.post("/:id/check-payment", rateLimits.orders, async (req, res) => {
+  const order = await findOrderWithToken(req);
+  const { paymentId } = z.object({ paymentId: z.string().regex(/^\d{1,20}$/).optional() }).parse(req.body ?? {});
+  if (order.status !== "PAID" && config.mercadoPago) await syncOrderPayments(order.id, paymentId);
+  const updated = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+  res.json({ status: updated.status });
+});
+
+// Pago simulado para probar sin cobrar. En producción está apagado (SIMULATED_PAYMENTS).
 ordersRouter.post("/:id/simulate-payment", async (req, res) => {
   if (!config.simulatedPayments) throw new HttpError(404, "No disponible");
   const order = await findOrderWithToken(req);
-  const paid = await prisma.order.updateMany({
-    where: { id: order.id, status: "PENDING", expiresAt: { gt: new Date() } },
-    data: { status: "PAID" },
-  });
-  if (paid.count === 0) {
+  if (order.status !== "PENDING" || !order.expiresAt || order.expiresAt <= new Date() || !(await markOrderPaid(order.id))) {
     throw new HttpError(409, order.status === "PAID" ? "La orden ya está paga" : "La orden venció o ya no está pendiente");
   }
-  sendInBackground("entradas", () => sendOrderConfirmation(order.id));
   res.json({ ok: true });
 });
 

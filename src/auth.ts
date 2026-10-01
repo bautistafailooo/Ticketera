@@ -45,11 +45,13 @@ export async function startSession(res: Response, userId: string) {
   });
 }
 
-export function readSessionToken(req: Request) {
+export const readSessionToken = (req: Request) => readCookie(req, SESSION_COOKIE);
+
+export function readCookie(req: Request, cookie: string) {
   const header = req.headers.cookie ?? "";
   for (const part of header.split(";")) {
     const [name, ...value] = part.trim().split("=");
-    if (name !== SESSION_COOKIE) continue;
+    if (name !== cookie) continue;
     try {
       return decodeURIComponent(value.join("="));
     } catch {

@@ -95,7 +95,8 @@ const gateFailures = rateLimit({
 
 const privateGate: RequestHandler = (req, res, next) => {
   const expected = config.sitePassword;
-  if (!expected || req.path === "/health") return next();
+  // /health para el monitoreo y las notificaciones de Mercado Pago, que no saben la contraseña.
+  if (!expected || req.path === "/health" || req.path === "/payments/mercadopago/webhook") return next();
   // Que los buscadores no indexen el sitio mientras es privado.
   res.set("X-Robots-Tag", "noindex, nofollow");
   const given = passwordFrom(req);

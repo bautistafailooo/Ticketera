@@ -117,5 +117,5 @@ Baja la última versión y reinicia. La base, los flyers y la configuración se 
 
 En `/opt/ecko/.env.production`:
 - Sacar `SITE_PASSWORD` (el sitio pasa a ser público).
-- Sacar `SIMULATED_PAYMENTS` (se apaga el pago simulado), cuando esté Mercado Pago.
+- Agregar `MP_CLIENT_ID` y `MP_CLIENT_SECRET` de la aplicación de Mercado Pago de tu cuenta real ([MERCADOPAGO.md](MERCADOPAGO.md)) y sacar `SIMULATED_PAYMENTS` (se apaga el pago simulado).
 - Tener el dominio propio y los mails con el dominio verificado.

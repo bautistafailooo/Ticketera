@@ -37,6 +37,11 @@ export function formatPrice(cents) {
   return formatter.format(cents / 100);
 }
 
+// Cargo por servicio: la misma cuenta que src/payments/fee.ts (redondeado a pesos enteros).
+export function serviceFee(subtotalCents, percent) {
+  return Math.round((subtotalCents * percent) / 100 / 100) * 100;
+}
+
 export function formatDate(iso) {
   return dateFormatter.format(new Date(iso));
 }

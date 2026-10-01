@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { prisma } from "./db.js";
 import { checkMailSetup } from "./mail/transport.js";
 import { cleanupSessions, expireOrders } from "./orders.js";
+import { oauthRedirectUri } from "./payments/mercadopago.js";
 
 // SQLite: modo WAL (lecturas y escrituras a la vez) y espera en vez de fallar si la base está ocupada.
 await prisma.$queryRawUnsafe("PRAGMA journal_mode = WAL");
@@ -43,6 +44,12 @@ const server = createApp().listen(config.port, (error?: Error & { code?: string 
   console.log(`ecko escuchando en http://localhost:${config.port}`);
   if (config.simulatedPayments) {
     console.log("Pagos simulados activados: las compras se pueden confirmar sin cobrar.");
+  }
+  if (config.mercadoPago) {
+    console.log(`Mercado Pago: activado (cargo por servicio ${config.serviceFeePercent}%).`);
+    console.log(`  URL de redireccionamiento para tu aplicación de Mercado Pago: ${oauthRedirectUri()}`);
+  } else if (!config.simulatedPayments) {
+    console.warn("Mercado Pago no está configurado (MP_CLIENT_ID y MP_CLIENT_SECRET): no se pueden cobrar entradas.");
   }
   void checkMailSetup();
 });

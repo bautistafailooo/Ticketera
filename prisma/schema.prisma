@@ -40,6 +40,13 @@ model User {
   trustedAt    DateTime?
   // Suspendido: no puede publicar y sus eventos salen de la cartelera.
   suspendedAt  DateTime?
+  // Cuenta de Mercado Pago conectada (OAuth): las ventas se cobran en esa cuenta.
+  // Los tokens se guardan cifrados (ver src/payments/crypto.ts).
+  mpUserId         String?
+  mpAccessToken    String?
+  mpRefreshToken   String?
+  mpTokenExpiresAt DateTime?
+  mpConnectedAt    DateTime?
   createdAt    DateTime  @default(now())
   events       Event[]
   sessions     Session[]
@@ -109,7 +116,15 @@ model Order {
   buyerName   String
   buyerEmail  String
   status      OrderStatus @default(PENDING)
+  // Total que paga el comprador: entradas + cargo por servicio.
   totalCents  Int
+  // Cargo por servicio (la comisión de ecko). Lo paga el comprador.
+  feeCents    Int         @default(0)
+  // Pago de Mercado Pago que confirmó la orden (o que se devolvió por llegar tarde).
+  mpPaymentId String?     @unique
+  paidAt      DateTime?
+  // Si el pago llegó cuando la orden ya no se podía cumplir, se devuelve.
+  refundedAt  DateTime?
   // Si no se paga antes de esta fecha, la orden vence y libera el cupo.
   expiresAt   DateTime?
   // Última vez que se mandaron las entradas por mail.

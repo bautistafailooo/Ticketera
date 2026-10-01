@@ -92,6 +92,7 @@ adminRouter.get("/organizers", async (_req, res) => {
       role: true,
       trustedAt: true,
       suspendedAt: true,
+      mpConnectedAt: true,
       createdAt: true,
       _count: { select: { events: true } },
     },

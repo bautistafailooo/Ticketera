@@ -26,6 +26,17 @@ export const config = {
   mailOutboxDir: path.resolve(env.MAIL_OUTBOX_DIR ?? "mail-outbox"),
   // "memory" guarda los mails en memoria (tests).
   mailTransport: env.MAIL_TRANSPORT,
+  // Cargo por servicio que paga el comprador, en % del valor de las entradas (la comisión de ecko).
+  serviceFeePercent: Number(env.SERVICE_FEE_PERCENT ?? 10),
+  // Aplicación de Mercado Pago de ecko (ver MERCADOPAGO.md). Sin esto, no se cobra con Mercado Pago.
+  mercadoPago: env.MP_CLIENT_ID && env.MP_CLIENT_SECRET
+    ? {
+        clientId: env.MP_CLIENT_ID.trim(),
+        clientSecret: env.MP_CLIENT_SECRET.trim(),
+        apiUrl: (env.MP_API_URL ?? "https://api.mercadopago.com").replace(/\/$/, ""),
+        authUrl: (env.MP_AUTH_URL ?? "https://auth.mercadopago.com").replace(/\/$/, ""),
+      }
+    : null,
   // La cuenta con este email queda como administrador (al registrarse o al arrancar el servidor).
   adminEmail: env.ADMIN_EMAIL?.trim().toLowerCase() || undefined,
   // Si está, todo el sitio pide esta contraseña (para tenerlo online en privado mientras se prueba).

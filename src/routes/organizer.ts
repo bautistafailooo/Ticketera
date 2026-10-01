@@ -1,7 +1,8 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import express, { Router } from "express";
 import { z } from "zod";
-import { requireUser, userOf } from "../auth.js";
+import { readCookie, requireUser, userOf } from "../auth.js";
+import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { canEdit, isTrusted, visibility } from "../events.js";
@@ -9,6 +10,7 @@ import { MAX_IMAGE_BYTES, deleteImage, detectImageType, saveImage } from "../ima
 import { notifyAdminsPendingReview } from "../mail/messages.js";
 import { sendInBackground } from "../mail/transport.js";
 import { expireOrders } from "../orders.js";
+import { authorizationUrl, connectAccount, disconnectAccount, oauthRedirectUri } from "../payments/mercadopago.js";
 
 // Rutas del panel del organizador: requieren sesión y solo acceden a sus eventos.
 export const organizerRouter = Router();
@@ -227,6 +229,10 @@ organizerRouter.post("/events/:id/publish", async (req, res) => {
     throw new HttpError(409, "El evento necesita al menos un tipo de entrada");
   }
   if (!inTheFuture(event.startsAt)) throw new HttpError(409, "La fecha del evento ya pasó");
+  const paid = event.ticketTypes.some((t) => t.priceCents > 0);
+  if (paid && !config.simulatedPayments && !(config.mercadoPago && user.mpAccessToken)) {
+    throw new HttpError(409, "Para vender entradas pagas, conectá tu cuenta de Mercado Pago desde el panel");
+  }
 
   const status = isTrusted(user) ? "PUBLISHED" : "PENDING_REVIEW";
   const updated = await prisma.event.updateMany({
@@ -248,4 +254,63 @@ organizerRouter.post("/events/:id/door-token", async (req, res) => {
     data: { doorToken: randomBytes(24).toString("base64url") },
   });
   res.json({ doorToken: updated.doorToken });
+});
+
+// ---------- Cuenta de Mercado Pago del organizador ----------
+// Las ventas de sus eventos se cobran en su cuenta; el cargo por servicio le llega a ecko.
+
+const MP_STATE_COOKIE = "ecko_mp_state";
+
+organizerRouter.get("/mercadopago", (_req, res) => {
+  const user = userOf(res);
+  res.json({
+    available: config.mercadoPago !== null,
+    // Sin pago simulado, hace falta para publicar eventos con entradas pagas.
+    required: !config.simulatedPayments,
+    connected: user.mpAccessToken !== null,
+    connectedAt: user.mpConnectedAt,
+    redirectUri: config.mercadoPago ? oauthRedirectUri() : null,
+  });
+});
+
+// Lleva al organizador a Mercado Pago para que autorice a ecko a cobrar en su nombre.
+organizerRouter.get("/mercadopago/connect", (_req, res) => {
+  if (!config.mercadoPago) throw new HttpError(503, "Mercado Pago no está configurado");
+  // "state": un valor al azar que tiene que volver igual, para que nadie pueda conectar
+  // su propia cuenta en el panel de otro organizador con un link armado.
+  const state = randomBytes(24).toString("base64url");
+  res.cookie(MP_STATE_COOKIE, state, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: config.isProduction,
+    maxAge: 15 * 60 * 1000,
+    path: "/organizer/mercadopago",
+  });
+  res.redirect(authorizationUrl(state));
+});
+
+organizerRouter.get("/mercadopago/callback", async (req, res) => {
+  const expected = readCookie(req, MP_STATE_COOKIE) ?? "";
+  const state = typeof req.query.state === "string" ? req.query.state : "";
+  const code = typeof req.query.code === "string" ? req.query.code : "";
+  res.clearCookie(MP_STATE_COOKIE, { path: "/organizer/mercadopago" });
+  const sameState =
+    expected.length > 0 && expected.length === state.length && timingSafeEqual(Buffer.from(expected), Buffer.from(state));
+  if (!sameState || !code) {
+    res.redirect("/panel.html?mp=error");
+    return;
+  }
+  try {
+    await connectAccount(userOf(res).id, code);
+  } catch (err) {
+    console.error("No se pudo conectar la cuenta de Mercado Pago", err);
+    res.redirect("/panel.html?mp=error");
+    return;
+  }
+  res.redirect("/panel.html?mp=ok");
+});
+
+organizerRouter.post("/mercadopago/disconnect", async (_req, res) => {
+  await disconnectAccount(userOf(res).id);
+  res.json({ ok: true });
 });

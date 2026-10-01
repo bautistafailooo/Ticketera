@@ -3,7 +3,24 @@ import { api, escapeHtml, eventImage, formatDate, formatPrice } from "/js/common
 const content = document.getElementById("content");
 
 // El link de la orden es /orden.html#<id>.<clave>. La clave no viaja al servidor en la URL.
-const [orderId, token] = decodeURIComponent(location.hash.slice(1)).split(".");
+let [orderId, token] = decodeURIComponent(location.hash.slice(1)).split(".");
+
+// Al volver de Mercado Pago la dirección es /orden.html?volver=<id>&payment_id=…&status=…
+// (sin la clave): la clave quedó guardada en este navegador antes de ir a pagar.
+const tokenKey = (id) => `ecko-orden-${id}`;
+const params = new URLSearchParams(location.search);
+const returning = params.get("volver");
+const returnedPaymentId = params.get("payment_id") || params.get("collection_id");
+const returnedStatus = params.get("status") || params.get("collection_status");
+if (returning) {
+  orderId = returning;
+  try {
+    token = localStorage.getItem(tokenKey(returning)) ?? undefined;
+  } catch {
+    token = undefined;
+  }
+  if (token) history.replaceState(null, "", `/orden.html#${encodeURIComponent(orderId)}.${encodeURIComponent(token)}`);
+}
 
 const orderApi = (path = "", options = {}) =>
   api(`/orders/${encodeURIComponent(orderId)}${path}`, {
@@ -34,8 +51,11 @@ function summary(order) {
   }
   const rows = [...counts].map(([name, { quantity, priceCents }]) =>
     `<li><span>${quantity} × ${escapeHtml(name)}</span><span>${formatPrice(quantity * priceCents)}</span></li>`).join("");
+  const fee = order.feeCents > 0
+    ? `<li class="muted"><span>Cargo por servicio</span><span>${formatPrice(order.feeCents)}</span></li>`
+    : "";
   return `
-    <ul class="lines">${rows}</ul>
+    <ul class="lines">${rows}${fee}</ul>
     <div class="total-line"><span>Total</span><span class="amount">${formatPrice(order.totalCents)}</span></div>`;
 }
 
@@ -53,10 +73,16 @@ function renderPending(order) {
         <p class="muted" style="margin-bottom: 4px">Tus entradas están reservadas por</p>
         <div class="countdown" id="countdown">--:--</div>
         <p class="muted small">Si no pagás a tiempo, se liberan para otras personas.</p>
-        ${order.simulatedPayments
-          ? `<button type="button" class="btn btn-gradient btn-block" id="pay">Pagar ${formatPrice(order.totalCents)}</button>
+        ${returnedStatus === "rejected" ? '<p class="notice danger">El pago fue rechazado. Probá de nuevo, con otra tarjeta o con dinero en tu cuenta de Mercado Pago.</p>' : ""}
+        ${order.payment.mercadoPago
+          ? `<button type="button" class="btn btn-gradient btn-block" id="pay-mp">Pagar ${formatPrice(order.totalCents)} con Mercado Pago</button>
+             <p class="field-hint">Con tarjeta de crédito, débito o dinero en tu cuenta de Mercado Pago.</p>`
+          : ""}
+        ${order.payment.simulated
+          ? `<button type="button" class="btn ${order.payment.mercadoPago ? "btn-secondary" : "btn-gradient"} btn-block" id="pay">${order.payment.mercadoPago ? "Pago de prueba (sin cobrar)" : `Pagar ${formatPrice(order.totalCents)}`}</button>
              <p class="field-hint">Modo de prueba: el pago se confirma sin cobrar.</p>`
-          : '<p class="notice warn">El pago en línea todavía no está disponible.</p>'}
+          : ""}
+        ${!order.payment.mercadoPago && !order.payment.simulated ? '<p class="notice warn">Este evento todavía no puede cobrar en línea.</p>' : ""}
         <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
       </section>
     </div>`;
@@ -74,6 +100,25 @@ function renderPending(order) {
   };
   tick();
   countdown = setInterval(tick, 1000);
+
+  document.getElementById("pay-mp")?.addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    e.target.textContent = "Yendo a Mercado Pago…";
+    try {
+      const { url } = await orderApi("/checkout", { method: "POST" });
+      // Para reconocer la compra al volver de Mercado Pago.
+      try {
+        localStorage.setItem(tokenKey(orderId), token);
+      } catch {
+        // sin almacenamiento: al volver se pide abrir el link del mail
+      }
+      location.href = url;
+    } catch (err) {
+      document.getElementById("message").textContent = err.message;
+      e.target.disabled = false;
+      e.target.textContent = `Pagar ${formatPrice(order.totalCents)} con Mercado Pago`;
+    }
+  });
 
   document.getElementById("pay")?.addEventListener("click", async (e) => {
     e.target.disabled = true;
@@ -164,9 +209,11 @@ function renderPaid(order) {
 }
 
 function renderClosed(order) {
-  const reason = order.status === "EXPIRED"
-    ? "La reserva venció porque no se pagó a tiempo, y las entradas se liberaron."
-    : "Esta compra fue cancelada.";
+  const reason = order.refunded
+    ? "Tu pago llegó después de que venciera la reserva y ya no quedaban entradas, así que te lo devolvimos completo por Mercado Pago."
+    : order.status === "EXPIRED"
+      ? "La reserva venció porque no se pagó a tiempo, y las entradas se liberaron."
+      : "Esta compra fue cancelada.";
   content.innerHTML = `
     ${header(order, `<span class="badge danger">${order.status === "EXPIRED" ? "Reserva vencida" : "Cancelada"}</span>`)}
     <div class="empty">
@@ -175,10 +222,39 @@ function renderClosed(order) {
     </div>`;
 }
 
+// Al volver de Mercado Pago, el pago puede tardar unos segundos en confirmarse.
+async function checkPayment() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { status } = await orderApi("/check-payment", {
+      method: "POST",
+      body: JSON.stringify(returnedPaymentId && /^\d+$/.test(returnedPaymentId) ? { paymentId: returnedPaymentId } : {}),
+    }).catch(() => ({ status: null }));
+    if (status !== "PENDING" || returnedStatus === "rejected") return;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+}
+
+let checkedReturn = false;
+
 async function load() {
   try {
+    if (returning && !token) {
+      throw new Error("Volviste de Mercado Pago en otro navegador. Si el pago se aprobó, te llegan las entradas por mail en unos minutos.");
+    }
     if (!orderId || !token) throw new Error("El link de la compra está incompleto.");
+    if (returning && !checkedReturn) {
+      checkedReturn = true;
+      content.innerHTML = '<div class="empty"><p>Confirmando tu pago…</p></div>';
+      await checkPayment();
+    }
     const order = await orderApi();
+    if (order.status !== "PENDING") {
+      try {
+        localStorage.removeItem(tokenKey(orderId));
+      } catch {
+        // nada
+      }
+    }
     document.title = document.title.replace(/^Tu compra/, `${order.event.name} · Tu compra`);
     if (order.status === "PAID") renderPaid(order);
     else if (order.status === "PENDING") renderPending(order);

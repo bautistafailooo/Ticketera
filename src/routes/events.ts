@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { onSaleWhere } from "../events.js";
@@ -35,5 +36,5 @@ eventsRouter.get("/:id", async (req, res) => {
     select: publicEvent,
   });
   if (!event) throw new HttpError(404, "Evento no encontrado o sin venta disponible");
-  res.json(event);
+  res.json({ ...event, serviceFeePercent: config.serviceFeePercent });
 });

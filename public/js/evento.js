@@ -1,4 +1,4 @@
-import { api, escapeHtml, eventImage, formatDate, formatPrice } from "/js/common.js";
+import { api, escapeHtml, eventImage, formatDate, formatPrice, serviceFee } from "/js/common.js";
 
 const MAX_TICKETS = 10;
 const content = document.getElementById("content");
@@ -86,6 +86,9 @@ function render(event) {
       total += qty * t.priceCents;
       lines.push(`<li><span>${qty} × ${escapeHtml(t.name)}</span><span>${formatPrice(qty * t.priceCents)}</span></li>`);
     }
+    const fee = serviceFee(total, event.serviceFeePercent ?? 0);
+    if (fee > 0) lines.push(`<li class="muted"><span>Cargo por servicio</span><span>${formatPrice(fee)}</span></li>`);
+    total += fee;
     document.getElementById("lines").innerHTML = lines.join("") || '<li class="faint">Elegí tus entradas.</li>';
     document.getElementById("total").textContent = formatPrice(total);
     document.getElementById("mobile-total").textContent = formatPrice(total);
