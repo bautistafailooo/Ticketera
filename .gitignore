@@ -28,3 +28,6 @@ test-backups/
 # Configuración y datos del servidor (no se suben nunca)
 .env.production
 data/
+*.db-shm
+*.db-wal
+*.db-journal
