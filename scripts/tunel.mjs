@@ -60,7 +60,9 @@ await new Promise((resolve) => {
 });
 
 console.log("Abriendo el túnel de Cloudflare…");
-const tunnel = spawn(CLOUDFLARED, ["tunnel", "--no-autoupdate", "--url", `http://localhost:${PORT}`], {
+// --protocol http2: conexión por TCP 443, como cualquier página web. El modo por defecto (QUIC,
+// por UDP) suele estar bloqueado por routers, antivirus o proveedores, y el túnel no conecta.
+const tunnel = spawn(CLOUDFLARED, ["tunnel", "--no-autoupdate", "--protocol", "http2", "--url", `http://localhost:${PORT}`], {
   stdio: ["ignore", "pipe", "pipe"],
 });
 children.push(tunnel);
@@ -94,15 +96,26 @@ const timeout = setTimeout(() => {
   if (started) return;
   if (publicUrl) {
     // La dirección ya está pero no confirmó la conexión: se arranca igual y se avisa.
-    console.log("Cloudflare tarda en confirmar la conexión. Si el link da error 1033, esperá un minuto y recargá.");
+    console.log("\nEl túnel no confirmó la conexión con Cloudflare. Si el link da error 1033, el túnel no está conectado.");
+    console.log("Últimos mensajes de cloudflared (copialos con clic derecho si necesitás ayuda):");
+    for (const line of recentLines) console.log(`  ${line}`);
     start();
   } else {
     stopAll(1, "Cloudflare no respondió con una dirección. Revisá tu conexión a internet y probá de nuevo.");
   }
 }, 30_000);
 
+// Últimas líneas de cloudflared, para mostrar si no conecta.
+const recentLines = [];
+
 function onTunnelOutput(chunk) {
   const text = chunk.toString();
+  for (const line of text.split(/\r?\n/).filter(Boolean)) {
+    recentLines.push(line);
+    if (recentLines.length > 15) recentLines.shift();
+    // Los errores de cloudflared se muestran (el resto se oculta para no ensuciar la pantalla).
+    if (/\b(ERR|error)\b/.test(line)) console.log(`[cloudflared] ${line.replace(/^\S+\s+/, "")}`);
+  }
   const match = text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
   if (match && !publicUrl) {
     publicUrl = match[0];
