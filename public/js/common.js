@@ -130,8 +130,15 @@ export async function requireLogin() {
 export async function setupPanelPage() {
   const user = await requireLogin();
   document.getElementById("user-name").textContent = user.name;
+  document.getElementById("user-initial").textContent = (user.name.trim()[0] ?? "?").toUpperCase();
+  document.getElementById("menu-name").textContent = user.name;
+  document.getElementById("menu-email").textContent = user.email;
   document.getElementById("logout").addEventListener("click", logout);
   document.getElementById("admin-link").hidden = user.role !== "ADMIN";
+  setupAccountMenu();
+  // Marca la sección actual en el menú.
+  const section = location.pathname.startsWith("/admin") ? "admin" : "panel";
+  document.querySelector(`[data-section="${section}"]`)?.setAttribute("aria-current", "page");
   const notice = document.getElementById("account-notice");
   if (notice && user.suspended) {
     notice.textContent = "Tu cuenta está suspendida: tus eventos no aparecen en la cartelera y no podés publicar. Escribinos si creés que es un error.";
@@ -142,6 +149,30 @@ export async function setupPanelPage() {
     notice.hidden = false;
   }
   return user;
+}
+
+// Menú de la cuenta (nombre, email y cerrar sesión): se abre con el botón y se cierra
+// tocando afuera o con Escape.
+function setupAccountMenu() {
+  const button = document.getElementById("account-button");
+  const menu = document.getElementById("account-menu");
+  const toggle = (open) => {
+    menu.hidden = !open;
+    button.setAttribute("aria-expanded", String(open));
+  };
+  button.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggle(menu.hidden);
+  });
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !menu.contains(e.target)) toggle(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !menu.hidden) {
+      toggle(false);
+      button.focus();
+    }
+  });
 }
 
 export async function logout() {
@@ -195,3 +226,32 @@ export function safeNext(next, fallback) {
     return fallback;
   }
 }
+
+// En las páginas públicas, el botón "Vendé entradas" pasa a ser "Mi panel" si ya hay sesión.
+const accountLink = document.querySelector("[data-account-link]");
+if (accountLink) {
+  fetch("/auth/me")
+    .then((res) => {
+      if (!res.ok) return;
+      accountLink.textContent = "Mi panel";
+      accountLink.href = "/panel.html";
+    })
+    .catch(() => {});
+}
+
+// En el celular las tablas se muestran como tarjetas: cada celda lleva el nombre de su
+// columna (data-label) para mostrarlo al lado del valor. Se completa solo en cada tabla nueva.
+function labelTables(root) {
+  for (const table of root.querySelectorAll?.("table") ?? []) {
+    const headers = [...table.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+    for (const row of table.querySelectorAll("tbody tr, tfoot tr")) {
+      [...row.children].forEach((cell, i) => {
+        if (headers[i] && !cell.dataset.label) cell.dataset.label = headers[i];
+      });
+    }
+  }
+}
+labelTables(document);
+new MutationObserver((mutations) => {
+  for (const m of mutations) for (const node of m.addedNodes) if (node.nodeType === 1) labelTables(node.parentElement ?? node);
+}).observe(document.documentElement, { childList: true, subtree: true });

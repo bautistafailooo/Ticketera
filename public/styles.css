@@ -44,6 +44,8 @@ html { -webkit-text-size-adjust: 100%; }
 
 body {
   margin: 0;
+  /* Textos largos sin espacios (emails, links) no rompen el ancho en el celular. */
+  overflow-wrap: break-word;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -164,7 +166,80 @@ main.container { padding-top: 32px; padding-bottom: 64px; }
   font-family: inherit;
 }
 .site-nav a:hover, .link-button:hover { color: var(--text); text-decoration: none; }
-.site-nav .user-name { color: var(--faint); font-size: 0.9rem; }
+.site-nav a[aria-current="page"] { color: var(--text); }
+.only-narrow { display: none; }
+
+/* Botón "Vendé entradas" de las páginas públicas: borde con el degradé de la marca. */
+.site-nav .nav-cta {
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: linear-gradient(var(--bg), var(--bg)) padding-box, var(--gradient) border-box;
+  white-space: nowrap;
+  transition: box-shadow 0.2s;
+}
+.site-nav .nav-cta:hover { box-shadow: 0 0 24px rgba(179, 92, 255, 0.35); }
+
+/* Menú de la cuenta en el panel. */
+.account { position: relative; }
+.account-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.account-button:hover, .account-button[aria-expanded="true"] { color: var(--text); border-color: var(--border-strong); }
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+.account-button .user-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  max-width: calc(100vw - 32px);
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface, #14141f);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+}
+.account-info { display: grid; gap: 2px; padding: 8px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.account-info span { color: var(--faint); font-size: 0.85rem; }
+.account-menu a, .account-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.account-menu a:hover, .account-menu button:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); text-decoration: none; }
 
 .site-footer { border-top: 1px solid var(--border); padding: 24px 0; color: var(--faint); font-size: 0.875rem; }
 .site-footer .container { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
@@ -600,6 +675,7 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 
 .review-list { display: grid; gap: 16px; }
 .review-card { display: grid; grid-template-columns: 140px 1fr; gap: 20px; }
+.review-card > *, .order-head > * { min-width: 0; }
 .review-card .thumb { aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden; }
 .review-card ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
 
@@ -653,6 +729,9 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
   .event-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
   .event-card .body { padding: 12px 12px 14px; }
   .event-card h3 { font-size: 1rem; }
+  /* En las tarjetas angostas, "Últimas entradas" va abajo para no tapar la fecha. */
+  .event-card .badge-slot { top: auto; bottom: 10px; left: 10px; right: 10px; }
+  .event-card .badge-slot .badge { font-size: 0.65rem; padding: 4px 8px; }
   .panel-grid { grid-template-columns: 1fr; }
   .ticket-stub { grid-template-columns: 1fr; }
   .ticket-stub .qr-side { border-left: none; border-top: 2px dashed var(--border-strong); }
@@ -662,7 +741,56 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
   .review-card, .image-editor { grid-template-columns: 1fr; }
   .review-card .thumb, .image-editor .preview { max-width: 200px; }
   .order-head .thumb { width: 64px; }
-  .site-nav .user-name { display: none; }
+  .order-head { gap: 14px; }
+  .order-head .badge { white-space: normal; }
+  .site-nav { gap: 4px 14px; }
+  .account-button { padding: 4px; }
+  .account-button .user-name { display: none; }
+  .only-wide { display: none; }
+  .only-narrow { display: inline; }
+  .site-nav .nav-cta { padding: 7px 14px; font-size: 0.9rem; }
+  .stats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat .value { font-size: 1.4rem; }
+
+  /* Tablas como tarjetas: una por fila, con el nombre de cada columna al lado del valor. */
+  .table-wrap { overflow: visible; margin: 0; }
+  .table-wrap table, .table-wrap tbody, .table-wrap tfoot, .table-wrap tr, .table-wrap td, .table-wrap tfoot th { display: block; width: 100%; }
+  .table-wrap thead { display: none; }
+  .table-wrap tr {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 6px 14px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .table-wrap td, .table-wrap tfoot th {
+    padding: 8px 0;
+    border: none;
+    white-space: normal;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .table-wrap td::after { content: ""; display: block; clear: both; }
+  .table-wrap td + td { border-top: 1px solid var(--border); }
+  .table-wrap td::before, .table-wrap tfoot th::before {
+    content: attr(data-label);
+    float: left;
+    margin-right: 12px;
+    padding-top: 2px;
+    text-align: left;
+    color: var(--faint);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  /* La primera columna es el título de la tarjeta. */
+  .table-wrap td:first-child { display: block; text-align: left; font-weight: 700; font-size: 1.05rem; }
+  .table-wrap td:first-child::before { content: none; }
+  /* Columnas sin título (los botones): ocupan todo el ancho. */
+  .table-wrap td:not([data-label]) { display: block; text-align: left; }
+  .table-wrap td:not([data-label])::before { content: none; }
+  .table-wrap .row-actions { justify-content: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {

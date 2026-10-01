@@ -15,11 +15,20 @@
   <header class="site-header">
     <div class="container">
       <a class="logo" href="/" data-site-name>ecko</a>
-      <nav class="site-nav">
-        <a href="/panel.html">Mis eventos</a>
-        <a href="/admin.html" id="admin-link" hidden>Administración</a>
-        <span class="user-name" id="user-name"></span>
-        <button type="button" class="link-button" id="logout">Salir</button>
+      <nav class="site-nav" aria-label="Panel">
+        <a href="/panel.html" data-section="panel">Mis eventos</a>
+        <a href="/admin.html" id="admin-link" data-section="admin" hidden><span class="only-wide">Administración</span><span class="only-narrow">Admin</span></a>
+        <div class="account">
+          <button type="button" class="account-button" id="account-button" aria-expanded="false" aria-controls="account-menu" aria-label="Tu cuenta">
+            <span class="avatar" id="user-initial" aria-hidden="true"></span>
+            <span class="user-name" id="user-name"></span>
+          </button>
+          <div class="account-menu" id="account-menu" hidden>
+            <div class="account-info"><strong id="menu-name"></strong><span id="menu-email"></span></div>
+            <a href="/">Ver la cartelera</a>
+            <button type="button" id="logout">Cerrar sesión</button>
+          </div>
+        </div>
       </nav>
     </div>
   </header>

@@ -53,7 +53,7 @@ function renderEvents(events) {
   }
   eventsEl.innerHTML = `
     <div class="table-wrap"><table>
-      <thead><tr><th>Evento</th><th>Fecha</th><th>Organizador</th><th>Estado</th><th>Mercado Pago</th><th></th></tr></thead>
+      <thead><tr><th>Evento</th><th>Fecha</th><th>Organizador</th><th>Estado</th><th></th></tr></thead>
       <tbody>
         ${others.map((e) => `
           <tr>
