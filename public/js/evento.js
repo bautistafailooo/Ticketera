@@ -1,4 +1,11 @@
-import { api, escapeHtml, eventImage, formatDate, formatPrice, serviceFee } from "/js/common.js";
+import { api, dateParts, escapeHtml, eventImage, formatDate, formatPrice, serviceFee } from "/js/common.js";
+
+const dayFormatter = new Intl.DateTimeFormat("es-AR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  timeZone: "America/Argentina/Buenos_Aires",
+});
 
 const MAX_TICKETS = 10;
 const content = document.getElementById("content");
@@ -27,50 +34,92 @@ function render(event) {
   const options = event.ticketTypes.map((t) => {
     const left = available(t);
     return `
-      <div class="ticket-option ${left === 0 ? "sold-out" : ""}">
-        <div>
+      <div class="ticket-option ${left === 0 ? "sold-out" : ""}" data-option="${escapeHtml(t.id)}">
+        <div class="ticket-main">
           <div class="name">${escapeHtml(t.name)}</div>
           <div class="price">${t.priceCents === 0 ? "Gratis" : formatPrice(t.priceCents)}</div>
-          <div class="muted small">${lotNote(t, left)}</div>
+          <div class="note">${lotNote(t, left)}</div>
         </div>
-        ${left === 0 ? lotBadge(t) : `
-          <div class="stepper" data-id="${escapeHtml(t.id)}">
-            <button type="button" data-step="-1" aria-label="Quitar una entrada ${escapeHtml(t.name)}">−</button>
-            <output aria-live="polite">0</output>
-            <button type="button" data-step="1" aria-label="Agregar una entrada ${escapeHtml(t.name)}">+</button>
-          </div>`}
+        <div class="ticket-cut" aria-hidden="true"></div>
+        <div class="ticket-action">
+          ${left === 0 ? lotBadge(t) : `
+            <div class="stepper" data-id="${escapeHtml(t.id)}">
+              <button type="button" data-step="-1" aria-label="Quitar una entrada ${escapeHtml(t.name)}">−</button>
+              <output aria-live="polite">0</output>
+              <button type="button" data-step="1" aria-label="Agregar una entrada ${escapeHtml(t.name)}">+</button>
+            </div>`}
+        </div>
       </div>`;
   }).join("");
 
+  // Precio "desde" de lo que está a la venta ahora.
+  const onSale = event.ticketTypes.filter((t) => available(t) > 0);
+  const from = onSale.length ? Math.min(...onSale.map((t) => t.priceCents)) : null;
+  const start = new Date(event.startsAt);
+  const longDate = dayFormatter.format(start);
+  const { time } = dateParts(event.startsAt);
+  const flyerUrl = event.imageFile ? `/media/${encodeURIComponent(event.imageFile)}` : null;
+  const icon = (path) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+
   content.innerHTML = `
     <section class="event-hero">
-      ${event.imageFile ? `<div class="backdrop" style="background-image: url('/media/${encodeURIComponent(event.imageFile)}')"></div>` : ""}
+      ${flyerUrl ? `<div class="backdrop" style="background-image: url('${flyerUrl}')"></div>` : ""}
       <div class="container">
-        <div class="poster">${eventImage(event, `Flyer de ${event.name}`)}</div>
-        <div>
-          <div class="when">${escapeHtml(formatDate(event.startsAt))} h</div>
+        <div class="poster-wrap">
+          ${flyerUrl ? `<div class="poster-glow" style="background-image: url('${flyerUrl}')" aria-hidden="true"></div>` : ""}
+          <div class="poster">${eventImage(event, `Flyer de ${event.name}`)}</div>
+        </div>
+        <div class="hero-info">
+          ${event.organizer ? `<a class="organizer-chip" href="/organizador.html?id=${encodeURIComponent(event.organizer.id)}"><span class="avatar" aria-hidden="true">${escapeHtml(event.organizer.name.trim().charAt(0).toUpperCase())}</span>${escapeHtml(event.organizer.name)} <span class="faint">presenta</span></a>` : ""}
           <h1>${escapeHtml(event.name)}</h1>
-          <div class="where">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>
-            <span>${escapeHtml(event.venue)}${event.address ? `<span class="address">${escapeHtml(event.address)}</span>` : ""}</span>
+          <ul class="facts">
+            <li>${icon('<rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>')}<div><span>Fecha</span><strong>${escapeHtml(longDate.charAt(0).toUpperCase() + longDate.slice(1))}</strong></div></li>
+            <li>${icon('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')}<div><span>Hora</span><strong>${escapeHtml(time)} h</strong></div></li>
+            <li>${icon('<path d="M12 21.5s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9.5" r="2.5"/>')}<div><span>Lugar</span><strong>${escapeHtml(event.venue)}</strong>${event.address ? `<em>${escapeHtml(event.address)}</em>` : ""}</div></li>
+          </ul>
+          <div class="hero-cta">
+            ${allSoldOut
+              ? `<div class="from"><span>Entradas</span><strong>${allEnded ? "Venta finalizada" : "Agotadas"}</strong></div>`
+              : `<div class="from"><span>${from === 0 ? "Entrada" : "Desde"}</span><strong>${from === 0 ? "Gratis" : formatPrice(from)}</strong></div>
+                 <a class="btn btn-gradient" href="#entradas">Comprar entradas</a>`}
+            <button type="button" class="btn btn-secondary share-button" id="share">
+              ${icon('<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/>')}
+              <span>Compartir</span>
+            </button>
           </div>
-          ${event.organizer ? `<p class="organizer-line">Organiza <a href="/organizador.html?id=${encodeURIComponent(event.organizer.id)}">${escapeHtml(event.organizer.name)}</a></p>` : ""}
-          ${event.description ? `<p class="description">${escapeHtml(event.description)}</p>` : ""}
-          <button type="button" class="btn btn-secondary share-button" id="share">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>
-            <span>Compartir</span>
-          </button>
         </div>
       </div>
     </section>
 
     <main class="container" style="padding-top: 0">
       <div class="checkout">
-        <section class="card">
-          <h2>Entradas</h2>
-          ${allSoldOut ? `<p class="error">${allEnded ? "La venta de entradas para este evento terminó." : "Las entradas para este evento están agotadas."}</p>` : ""}
-          ${options}
-        </section>
+        <div class="event-main">
+          <section class="card" id="entradas">
+            <h2>Entradas</h2>
+            ${allSoldOut ? `<p class="error">${allEnded ? "La venta de entradas para este evento terminó." : "Las entradas para este evento están agotadas."}</p>` : ""}
+            <div class="ticket-list">${options}</div>
+          </section>
+
+          ${event.description ? `
+          <section class="card about">
+            <h2>Sobre el evento</h2>
+            <p class="description">${escapeHtml(event.description)}</p>
+          </section>` : ""}
+
+          ${event.map ? `
+          <section class="card map-card">
+            <div class="map-head">
+              <div>
+                <h2>Cómo llegar</h2>
+                <p class="muted" style="margin: 0">${escapeHtml(event.venue)} · ${escapeHtml(event.address)}</p>
+              </div>
+              <a class="btn btn-secondary" href="${escapeHtml(event.map.directionsUrl)}" target="_blank" rel="noopener">Abrir en Google Maps</a>
+            </div>
+            <div class="map-frame">
+              <iframe src="${escapeHtml(event.map.embedUrl)}" title="Mapa de ${escapeHtml(event.venue)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+            </div>
+          </section>` : ""}
+        </div>
 
         <form class="card summary" id="checkout" ${allSoldOut ? "hidden" : ""}>
           <h2>Tu compra</h2>
@@ -86,19 +135,6 @@ function render(event) {
           <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
         </form>
       </div>
-      ${event.map ? `
-      <section class="card map-card">
-        <div class="map-head">
-          <div>
-            <h2>Cómo llegar</h2>
-            <p class="muted" style="margin: 0">${escapeHtml(event.venue)} · ${escapeHtml(event.address)}</p>
-          </div>
-          <a class="btn btn-secondary" href="${escapeHtml(event.map.directionsUrl)}" target="_blank" rel="noopener">Abrir en Google Maps</a>
-        </div>
-        <div class="map-frame">
-          <iframe src="${escapeHtml(event.map.embedUrl)}" title="Mapa de ${escapeHtml(event.venue)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-        </div>
-      </section>` : ""}
     </main>
 
     <div class="mobile-bar" id="mobile-bar" ${allSoldOut ? "hidden" : ""}>
@@ -132,6 +168,7 @@ function render(event) {
       const t = byId.get(stepper.dataset.id);
       const qty = quantities.get(t.id);
       stepper.querySelector("output").textContent = qty;
+      stepper.closest(".ticket-option").classList.toggle("selected", qty > 0);
       stepper.querySelector('[data-step="-1"]').disabled = qty === 0;
       stepper.querySelector('[data-step="1"]').disabled = qty >= available(t) || count >= MAX_TICKETS;
     }
