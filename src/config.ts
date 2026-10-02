@@ -35,6 +35,8 @@ export const config = {
     ? {
         clientId: env.MP_CLIENT_ID.trim(),
         clientSecret: env.MP_CLIENT_SECRET.trim(),
+        // Usar el checkout de pruebas (sandbox_init_point) en lugar del normal.
+        sandbox: env.MP_SANDBOX === "true",
         apiUrl: (env.MP_API_URL ?? "https://api.mercadopago.com").replace(/\/$/, ""),
         authUrl: (env.MP_AUTH_URL ?? "https://auth.mercadopago.com").replace(/\/$/, ""),
       }

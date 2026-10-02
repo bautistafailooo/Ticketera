@@ -226,7 +226,7 @@ ordersRouter.post("/:id/checkout", rateLimits.orders, async (req, res) => {
     returnUrl: `${config.publicUrl}/orden.html?volver=${encodeURIComponent(full.id)}`,
     notificationUrl: `${config.publicUrl}/payments/mercadopago/webhook?order=${encodeURIComponent(full.id)}`,
   });
-  res.json({ url: preference.init_point });
+  res.json({ url: (config.mercadoPago.sandbox && preference.sandbox_init_point) || preference.init_point });
 });
 
 // Al volver de Mercado Pago: consulta el pago y actualiza la orden (por si la notificación no llegó).

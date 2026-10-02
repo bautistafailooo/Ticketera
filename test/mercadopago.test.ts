@@ -54,6 +54,7 @@ beforeEach(() => {
   config.mercadoPago = {
     clientId: "app-123",
     clientSecret: "secreto-de-la-app",
+    sandbox: false,
     apiUrl: "https://api.mp.test",
     authUrl: "https://auth.mp.test",
   };

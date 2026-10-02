@@ -16,6 +16,7 @@
     "db:seed": "tsx src/seed.ts",
     "make-admin": "tsx src/make-admin.ts",
     "probar-mail": "tsx src/probar-mail.ts",
+    "mp:diagnostico": "tsx src/mp-diagnostico.ts",
     "postinstall": "prisma generate",
     "tunel": "prisma migrate deploy && prisma generate && node scripts/tunel.mjs"
   },

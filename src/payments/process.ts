@@ -37,7 +37,12 @@ async function refund(token: string, orderId: string, paymentId: string, reason:
 
 export async function applyPayment(orderId: string, payment: Payment, token: string): Promise<Outcome> {
   const paymentId = String(payment.id);
-  if (payment.external_reference !== orderId || payment.status !== "approved") return "ignored";
+  if (payment.external_reference !== orderId) return "ignored";
+  if (payment.status !== "approved") {
+    const detail = (payment as { status_detail?: string }).status_detail;
+    console.log(`Pago ${paymentId} de la orden ${orderId}: ${payment.status}${detail ? ` (${detail})` : ""}.`);
+    return "ignored";
+  }
 
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) return "ignored";

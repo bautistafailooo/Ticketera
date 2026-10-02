@@ -134,7 +134,7 @@ type PreferenceInput = {
 
 export async function createPreference(token: string, input: PreferenceInput) {
   const https = input.returnUrl.startsWith("https://");
-  const preference = await call<{ id: string; init_point: string }>("/checkout/preferences", {
+  const preference = await call<{ id: string; init_point: string; sandbox_init_point?: string }>("/checkout/preferences", {
     method: "POST",
     token,
     body: {
