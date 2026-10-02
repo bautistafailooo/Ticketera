@@ -5,6 +5,7 @@ import {
   argentinaLocalValue,
   escapeHtml,
   eventImage,
+  flyerImage,
   formatDate,
   formatPrice,
   pesosToCents,
@@ -283,7 +284,7 @@ function bind(event) {
     try {
       const blob = await resizeImage(file);
       const url = URL.createObjectURL(blob);
-      preview.innerHTML = `<img class="flyer" src="${url}" alt="">`;
+      preview.innerHTML = flyerImage(url);
       preview.style.opacity = "0.5";
       const res = await fetch(`${eventPath}/image`, { method: "PUT", headers: { "content-type": blob.type }, body: blob });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "No se pudo subir la imagen");

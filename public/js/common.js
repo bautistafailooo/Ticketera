@@ -82,10 +82,17 @@ export function dateChip(iso) {
 }
 
 // Flyer del evento o, si no tiene, un degradé con su inicial.
+// Flyer completo (sin recortar) sobre una copia desenfocada del mismo flyer que rellena el
+// espacio que sobra: así todas las tarjetas miden lo mismo y no se corta el texto del flyer.
+export function flyerImage(src, alt = "") {
+  return `<div class="flyer-frame">
+    <img class="flyer-fill" src="${escapeHtml(src)}" alt="" aria-hidden="true" loading="lazy">
+    <img class="flyer" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy">
+  </div>`;
+}
+
 export function eventImage(event, alt = "") {
-  if (event.imageFile) {
-    return `<img class="flyer" src="/media/${encodeURIComponent(event.imageFile)}" alt="${escapeHtml(alt)}" loading="lazy">`;
-  }
+  if (event.imageFile) return flyerImage(`/media/${encodeURIComponent(event.imageFile)}`, alt);
   const variant = [...String(event.id ?? event.name)].reduce((sum, c) => sum + c.charCodeAt(0), 0) % 4;
   const initial = (event.name ?? "?").trim().charAt(0).toUpperCase();
   return `<div class="flyer-placeholder v${variant}" aria-hidden="true">${escapeHtml(initial)}</div>`;
