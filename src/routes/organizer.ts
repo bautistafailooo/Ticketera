@@ -9,6 +9,7 @@ import { canEdit, isTrusted, visibility } from "../events.js";
 import { MAX_IMAGE_BYTES, deleteImage, detectImageType, saveImage } from "../images.js";
 import { notifyAdminsPendingReview } from "../mail/messages.js";
 import { sendInBackground } from "../mail/transport.js";
+import { withLots } from "../lots.js";
 import { expireOrders } from "../orders.js";
 import { authorizationUrl, connectAccount, disconnectAccount, oauthRedirectUri } from "../payments/mercadopago.js";
 
@@ -39,6 +40,9 @@ const createTicketTypeSchema = z.object({
   // Hasta $100.000.000 por entrada.
   priceCents: z.number().int().nonnegative().max(10_000_000_000),
   capacity: z.number().int().positive().max(1_000_000),
+  // Lotes (opcionales): venta hasta una fecha y/o habilitarse cuando termina otro tipo.
+  salesEndAt: z.coerce.date().refine(inTheFuture, "Tiene que ser una fecha futura").optional(),
+  opensAfterId: z.string().min(1).max(50).optional(),
 });
 
 async function findOwnEvent(eventId: string, organizerId: string) {
@@ -71,10 +75,18 @@ async function ticketStats(ticketTypeIds: string[]) {
   };
 }
 
-type TicketTypeRow = { id: string; name: string; priceCents: number; capacity: number; sold: number };
+type TicketTypeRow = {
+  id: string;
+  name: string;
+  priceCents: number;
+  capacity: number;
+  sold: number;
+  salesEndAt: Date | null;
+  opensAfterId: string | null;
+};
 
 function withStats(ticketTypes: TicketTypeRow[], stats: Awaited<ReturnType<typeof ticketStats>>) {
-  const rows = ticketTypes.map((t) => {
+  const rows = withLots(ticketTypes).map((t) => {
     const paid = stats.paid.get(t.id);
     return {
       ...t,
@@ -182,6 +194,12 @@ organizerRouter.post("/events/:id/ticket-types", async (req, res) => {
   assertEditable(event, user);
   if (event.ticketTypes.some((t) => t.name.toLowerCase() === data.name.toLowerCase())) {
     throw new HttpError(409, "Ya existe un tipo de entrada con ese nombre");
+  }
+  if (data.opensAfterId && !event.ticketTypes.some((t) => t.id === data.opensAfterId)) {
+    throw new HttpError(400, "El lote anterior tiene que ser un tipo de entrada de este evento");
+  }
+  if (data.salesEndAt && data.salesEndAt > event.startsAt) {
+    throw new HttpError(400, "La venta de un lote no puede terminar después del evento");
   }
   const ticketType = await prisma.ticketType.create({
     data: { ...data, eventId: event.id },

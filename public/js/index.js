@@ -13,16 +13,21 @@ let events = [];
 // Quita acentos y mayúsculas para buscar "cordoba" y encontrar "Córdoba".
 const normalize = (text) => String(text ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
+// Los lotes que ya terminaron no cuentan: lo que queda es lo que está o va a estar a la venta.
+const sellable = (event) => event.ticketTypes.filter((t) => t.status === "onsale" || t.status === "upcoming");
+
 function availabilityBadge(event) {
-  const capacity = event.ticketTypes.reduce((sum, t) => sum + t.capacity, 0);
-  const left = event.ticketTypes.reduce((sum, t) => sum + Math.max(0, t.capacity - t.sold), 0);
+  const types = sellable(event);
+  const capacity = types.reduce((sum, t) => sum + t.capacity, 0);
+  const left = types.reduce((sum, t) => sum + Math.max(0, t.capacity - t.sold), 0);
   if (left === 0) return '<span class="badge danger">Agotado</span>';
   if (left <= Math.max(10, capacity * 0.1)) return '<span class="badge hot">Últimas entradas</span>';
   return "";
 }
 
 function card(event) {
-  const prices = event.ticketTypes.map((t) => t.priceCents);
+  const onSale = event.ticketTypes.filter((t) => t.status === "onsale");
+  const prices = (onSale.length ? onSale : sellable(event)).map((t) => t.priceCents);
   const from = prices.length ? Math.min(...prices) : null;
   const { weekday, time } = dateParts(event.startsAt);
   return `

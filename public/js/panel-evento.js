@@ -64,9 +64,20 @@ function render(event) {
     ? `<p class="notice danger"><span><strong>${event.status === "REJECTED" ? "Motivo del rechazo" : "Motivo de la pausa"}:</strong> ${escapeHtml(event.reviewNote)}</span></p>`
     : "";
 
+  const LOT_STATUS = {
+    onsale: '<span class="badge ok">A la venta</span>',
+    soldout: '<span class="badge danger">Agotado</span>',
+    ended: '<span class="badge">Finalizó</span>',
+    upcoming: '<span class="badge warn">Próximamente</span>',
+  };
+  const lotInfo = (tt) => [
+    tt.opensAfterName ? `Después de ${escapeHtml(tt.opensAfterName)}` : "",
+    tt.salesEndAt ? `Hasta ${escapeHtml(formatDate(tt.salesEndAt))} h` : "",
+  ].filter(Boolean).join(" · ");
   const ticketRows = event.ticketTypes.map((tt) => `
     <tr>
-      <td>${escapeHtml(tt.name)}</td>
+      <td class="wrap">${escapeHtml(tt.name)}${lotInfo(tt) ? `<div class="faint small">${lotInfo(tt)}</div>` : ""}</td>
+      <td>${LOT_STATUS[tt.status] ?? ""}</td>
       <td class="num">${formatPrice(tt.priceCents)}</td>
       <td class="num">${tt.sold} / ${tt.capacity}</td>
       <td class="num">${tt.paid}</td>
@@ -141,7 +152,7 @@ function render(event) {
         <h2>Tipos de entrada</h2>
         ${event.ticketTypes.length
           ? `<div class="table-wrap"><table>
-              <thead><tr><th>Tipo</th><th class="num">Precio</th><th class="num">Vendidas</th><th class="num">Pagas</th><th class="num">Ingresaron</th><th class="num">Recaudado</th></tr></thead>
+              <thead><tr><th>Tipo</th><th>Venta</th><th class="num">Precio</th><th class="num">Vendidas</th><th class="num">Pagas</th><th class="num">Ingresaron</th><th class="num">Recaudado</th></tr></thead>
               <tbody>${ticketRows}</tbody>
             </table></div>`
           : '<p class="muted">Todavía no hay tipos de entrada. Agregá al menos uno para poder publicar.</p>'}
@@ -154,6 +165,19 @@ function render(event) {
             <div><label for="tt-capacity">Cantidad</label><input id="tt-capacity" type="number" min="1" step="1" required placeholder="500"></div>
           </div>
           <p class="field-hint">Poné 0 como precio para entradas gratis.</p>
+          <details class="lot-options">
+            <summary>Preventa o lotes <span class="faint">(opcional)</span></summary>
+            <p class="field-hint">Para vender por tandas: por ejemplo "Early bird" hasta el viernes y después "Primera tanda", que se habilita sola cuando el early bird se agota o vence.</p>
+            <div class="form-row">
+              <div><label for="tt-sales-end">Venta hasta</label><input id="tt-sales-end" type="datetime-local"></div>
+              <div><label for="tt-opens-after">Se habilita cuando termina</label>
+                <select id="tt-opens-after">
+                  <option value="">— Desde que se publica —</option>
+                  ${event.ticketTypes.map((tt) => `<option value="${escapeHtml(tt.id)}">${escapeHtml(tt.name)}</option>`).join("")}
+                </select>
+              </div>
+            </div>
+          </details>
           <div class="form-actions"><button type="submit" class="btn btn-secondary">Agregar</button></div>
           <p id="tt-message" class="error" role="alert" style="margin: 12px 0 0"></p>
         </form>
@@ -307,6 +331,8 @@ function bind(event) {
           name: document.getElementById("tt-name").value,
           priceCents: pesosToCents(document.getElementById("tt-price").value),
           capacity: Number(document.getElementById("tt-capacity").value),
+          salesEndAt: document.getElementById("tt-sales-end").value ? argentinaDate(document.getElementById("tt-sales-end").value) : undefined,
+          opensAfterId: document.getElementById("tt-opens-after").value || undefined,
         }),
       });
       await load();

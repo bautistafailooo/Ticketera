@@ -12,6 +12,7 @@ import { sendInBackground } from "../mail/transport.js";
 import { serviceFee } from "../payments/fee.js";
 import { createPreference, sellerToken } from "../payments/mercadopago.js";
 import { markOrderPaid, syncOrderPayments } from "../payments/process.js";
+import { lotStatus } from "../lots.js";
 import { mapLinks } from "../maps.js";
 import { generateTicketCode } from "../ticket-code.js";
 
@@ -53,7 +54,7 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
     for (const item of items) {
       const ticketType = await tx.ticketType.findUnique({
         where: { id: item.ticketTypeId },
-        include: { event: { include: { organizer: true } } },
+        include: { event: { include: { organizer: true, ticketTypes: true } } },
       });
       if (!ticketType) throw new HttpError(404, "Tipo de entrada no encontrado");
       const { event } = ticketType;
@@ -68,6 +69,10 @@ ordersRouter.post("/", rateLimits.orders, async (req, res) => {
       if (event.startsAt <= new Date()) {
         throw new HttpError(409, "La venta de este evento terminó");
       }
+      // Lotes: no se vende un lote que ya terminó ni uno que todavía no se habilitó.
+      const lot = lotStatus(ticketType, event.ticketTypes);
+      if (lot === "ended") throw new HttpError(409, `La venta de "${ticketType.name}" terminó`);
+      if (lot === "upcoming") throw new HttpError(409, `"${ticketType.name}" todavía no está a la venta`);
 
       // Reserva atómica: solo incrementa si queda cupo, evitando sobreventa.
       const reserved = await tx.ticketType.updateMany({

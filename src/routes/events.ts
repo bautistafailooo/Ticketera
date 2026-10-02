@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { onSaleWhere } from "../events.js";
+import { withLots } from "../lots.js";
 import { mapLinks } from "../maps.js";
 
 // Rutas públicas: solo muestran eventos a la venta (publicados, de organizadores
@@ -18,10 +19,16 @@ const publicEvent = {
   address: true,
   startsAt: true,
   ticketTypes: {
-    select: { id: true, name: true, priceCents: true, capacity: true, sold: true },
+    select: { id: true, name: true, priceCents: true, capacity: true, sold: true, salesEndAt: true, opensAfterId: true },
     orderBy: { priceCents: "asc" },
   },
 } as const;
+
+// Cada tipo de entrada lleva su estado de lote: a la venta, agotado, terminado o próximamente.
+const withLotStatus = <T extends { ticketTypes: Parameters<typeof withLots>[0] }>(event: T) => ({
+  ...event,
+  ticketTypes: withLots(event.ticketTypes),
+});
 
 eventsRouter.get("/", async (_req, res) => {
   const events = await prisma.event.findMany({
@@ -29,7 +36,7 @@ eventsRouter.get("/", async (_req, res) => {
     orderBy: { startsAt: "asc" },
     select: publicEvent,
   });
-  res.json(events);
+  res.json(events.map(withLotStatus));
 });
 
 eventsRouter.get("/:id", async (req, res) => {
@@ -38,5 +45,5 @@ eventsRouter.get("/:id", async (req, res) => {
     select: publicEvent,
   });
   if (!event) throw new HttpError(404, "Evento no encontrado o sin venta disponible");
-  res.json({ ...event, map: mapLinks(event.address), serviceFeePercent: config.serviceFeePercent });
+  res.json({ ...withLotStatus(event), map: mapLinks(event.address), serviceFeePercent: config.serviceFeePercent });
 });

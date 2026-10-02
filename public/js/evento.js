@@ -7,8 +7,22 @@ const eventId = new URLSearchParams(location.search).get("id");
 function render(event) {
   document.title = document.title.replace(/^Evento/, event.name);
   const quantities = new Map(event.ticketTypes.map((t) => [t.id, 0]));
-  const available = (t) => Math.max(0, t.capacity - t.sold);
+  // Solo se pueden elegir los lotes a la venta (no los terminados ni los que todavía no empezaron).
+  const available = (t) => (t.status === "onsale" ? Math.max(0, t.capacity - t.sold) : 0);
   const allSoldOut = event.ticketTypes.every((t) => available(t) === 0);
+  const allEnded = event.ticketTypes.every((t) => t.status === "ended");
+
+  const lotNote = (t, left) => {
+    if (t.status === "ended") return "La venta de este lote terminó";
+    if (t.status === "upcoming") return t.opensAfterName ? `Se habilita cuando termine ${escapeHtml(t.opensAfterName)}` : "Próximamente";
+    if (left === 0) return "Agotado";
+    const until = t.salesEndAt ? ` · hasta el ${escapeHtml(formatDate(t.salesEndAt))} h` : "";
+    return `${left <= 20 ? `¡Quedan ${left}!` : "Disponible"}${until}`;
+  };
+  const lotBadge = (t) =>
+    t.status === "ended" ? '<span class="badge">Finalizó</span>'
+      : t.status === "upcoming" ? '<span class="badge warn">Próximamente</span>'
+        : '<span class="badge danger">Agotado</span>';
 
   const options = event.ticketTypes.map((t) => {
     const left = available(t);
@@ -17,9 +31,9 @@ function render(event) {
         <div>
           <div class="name">${escapeHtml(t.name)}</div>
           <div class="price">${t.priceCents === 0 ? "Gratis" : formatPrice(t.priceCents)}</div>
-          <div class="muted small">${left === 0 ? "Agotado" : left <= 20 ? `¡Quedan ${left}!` : "Disponible"}</div>
+          <div class="muted small">${lotNote(t, left)}</div>
         </div>
-        ${left === 0 ? '<span class="badge danger">Agotado</span>' : `
+        ${left === 0 ? lotBadge(t) : `
           <div class="stepper" data-id="${escapeHtml(t.id)}">
             <button type="button" data-step="-1" aria-label="Quitar una entrada ${escapeHtml(t.name)}">−</button>
             <output aria-live="polite">0</output>
@@ -53,7 +67,7 @@ function render(event) {
       <div class="checkout">
         <section class="card">
           <h2>Entradas</h2>
-          ${allSoldOut ? '<p class="error">Las entradas para este evento están agotadas.</p>' : ""}
+          ${allSoldOut ? `<p class="error">${allEnded ? "La venta de entradas para este evento terminó." : "Las entradas para este evento están agotadas."}</p>` : ""}
           ${options}
         </section>
 

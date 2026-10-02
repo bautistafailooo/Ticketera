@@ -4,6 +4,7 @@ import type { RequestHandler } from "express";
 import { config } from "./config.js";
 import { prisma } from "./db.js";
 import { onSaleWhere } from "./events.js";
+import { withLots } from "./lots.js";
 import { esc, formatDate, formatPrice } from "./mail/templates.js";
 
 // Vista previa al compartir un link (WhatsApp, Instagram, Telegram, X…). Esas apps no ejecutan
@@ -37,10 +38,20 @@ function metaTags(p: Preview) {
 async function eventPreview(id: string): Promise<Preview | null> {
   const event = await prisma.event.findFirst({
     where: { id, ...onSaleWhere() },
-    select: { id: true, name: true, venue: true, startsAt: true, imageFile: true, ticketTypes: { select: { priceCents: true } } },
+    select: {
+      id: true,
+      name: true,
+      venue: true,
+      startsAt: true,
+      imageFile: true,
+      ticketTypes: { select: { id: true, name: true, priceCents: true, capacity: true, sold: true, salesEndAt: true, opensAfterId: true } },
+    },
   });
   if (!event) return null;
-  const prices = event.ticketTypes.map((t) => t.priceCents);
+  // "Desde": el precio más bajo de lo que está a la venta ahora (no de un lote ya terminado).
+  const lots = withLots(event.ticketTypes);
+  const onSale = lots.filter((t) => t.status === "onsale");
+  const prices = (onSale.length ? onSale : lots).map((t) => t.priceCents);
   const from = prices.length ? Math.min(...prices) : null;
   const date = formatDate(event.startsAt);
   return {
