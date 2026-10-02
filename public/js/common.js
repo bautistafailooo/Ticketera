@@ -4,7 +4,15 @@
 export const SITE = {
   name: "ecko",
   tagline: "Las mejores fechas, en un solo lugar.",
+  // Email de contacto que se muestra en el pie y en las páginas legales.
+  contactEmail: "eckotickets@gmail.com",
 };
+
+// Links de contacto: <a data-contact-email></a> (si el link no tiene texto, muestra el email).
+for (const el of document.querySelectorAll("[data-contact-email]")) {
+  el.href = `mailto:${SITE.contactEmail}`;
+  if (!el.textContent.trim()) el.textContent = SITE.contactEmail;
+}
 
 // Aplica el nombre del sitio al logo, al pie y al título de la pestaña.
 for (const el of document.querySelectorAll("[data-site-name]")) el.textContent = SITE.name;

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0b12">
+  <title>Botón de arrepentimiento · ecko</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="preload" href="/fonts/instrument-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="/" data-site-name>ecko</a>
+      <nav class="site-nav"><a href="/">Cartelera</a><a class="nav-cta" href="/login.html" data-account-link>Vendé entradas</a></nav>
+    </div>
+  </header>
+
+  <main class="container legal">
+    <article>
+      <p class="eyebrow">Legales</p>
+      <h1>Botón de arrepentimiento</h1>
+
+      <p>Podés revocar tu compra de entradas dentro de los <strong>10 días corridos</strong> desde que la hiciste, sin dar motivos (Ley 24.240, art. 34). Completá este formulario: vas a recibir al instante un <strong>código de trámite</strong> por email y te vamos a responder a ese mismo email. Las condiciones están en la <a href="/devoluciones.html#arrepentimiento">Política de devoluciones</a>.</p>
+
+      <form class="card" id="revocation" novalidate>
+        <label for="rv-name">Nombre y apellido</label>
+        <input id="rv-name" required maxlength="100" autocomplete="name">
+        <label for="rv-email">Email con el que compraste</label>
+        <input id="rv-email" type="email" required maxlength="200" autocomplete="email">
+        <label for="rv-reference">Código de una entrada o link de la compra</label>
+        <input id="rv-reference" maxlength="500" placeholder="Ej: K7QM-4XTP-9HWD">
+        <p class="field-hint">Está en el mail de tus entradas. Si no lo tenés, envialo igual: te contactamos para identificar la compra.</p>
+        <label for="rv-reason">Comentario <span class="faint">(opcional)</span></label>
+        <textarea id="rv-reason" maxlength="1000"></textarea>
+        <div class="form-actions"><button type="submit" class="btn btn-gradient" id="rv-submit">Enviar pedido de arrepentimiento</button></div>
+        <p id="rv-message" class="error" role="alert" style="margin: 12px 0 0"></p>
+      </form>
+
+      <div class="card" id="revocation-done" hidden>
+        <h2>Recibimos tu pedido</h2>
+        <p>Tu código de trámite es:</p>
+        <p class="ticket-code" id="rv-code" style="font-size: 1.6rem"></p>
+        <p class="muted" id="rv-detail"></p>
+      </div>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>© <span data-site-name>ecko</span></span>
+      <span>Las entradas se entregan con un código QR único.</span>
+      <nav class="legal-links" aria-label="Legales">
+        <a href="/terminos.html">Términos y condiciones</a>
+        <a href="/privacidad.html">Privacidad</a>
+        <a href="/devoluciones.html">Devoluciones</a>
+        <a href="/arrepentimiento.html" class="revocation-link">Botón de arrepentimiento</a>
+        <a data-contact-email>Contacto</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script type="module" src="/js/arrepentimiento.js"></script>
+</body>
+</html>

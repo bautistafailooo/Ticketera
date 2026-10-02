@@ -4,6 +4,7 @@ import { sentMails } from "../src/mail/transport.js";
 
 // Cada test arranca con la base vacía.
 beforeEach(async () => {
+  await prisma.revocationRequest.deleteMany();
   await prisma.ticket.deleteMany();
   await prisma.order.deleteMany();
   await prisma.ticketType.deleteMany();

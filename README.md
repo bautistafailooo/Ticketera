@@ -52,6 +52,8 @@ En el panel, cada evento indica si está visible en la cartelera y, si no, por q
 
 **Flyers.** El organizador sube la imagen del evento desde el panel. El navegador la achica (máximo 1600 px, WebP) antes de subirla, lo que además borra los metadatos de la foto. El servidor verifica por su contenido que sea JPG, PNG o WebP (hasta 5 MB) y la guarda en `UPLOAD_DIR` con un nombre aleatorio. Se sirve en `/media/<archivo>`. Las mismas reglas de edición que el resto del evento: un organizador no confiable no puede cambiarla después de aprobado.
 
+**Legales.** Términos y condiciones, privacidad (Ley 25.326) y devoluciones, enlazados en el pie de todas las páginas, y el **botón de arrepentimiento** (Res. 424/2020): un formulario sin registro que guarda el pedido, le manda al comprador un código de trámite al instante y avisa a los administradores, que lo ven y lo marcan resuelto en Administración. Si el pedido trae el código de una entrada o el link de la compra y el email coincide, queda vinculado a la compra.
+
 **Mails.** Se mandan:
 - al comprador, las entradas con el QR de cada una apenas la orden queda paga (y se pueden reenviar desde la página de la compra);
 - "Olvidé mi contraseña": un link que vale una hora y sirve una sola vez (se guarda solo el hash del token; al usarlo se cierran todas las sesiones);
@@ -183,9 +185,10 @@ App de puerta (requieren el header `x-door-token` con la clave del link de puert
 
 ## Pendiente antes de producción
 
-1. **Probar Mercado Pago con cuentas de prueba** y después con la cuenta real ([MERCADOPAGO.md](MERCADOPAGO.md)). Consultar con un contador la facturación del cargo por servicio.
-2. **Publicar online** con https y PostgreSQL (cambiar `provider` y el adapter de Prisma). Detrás de un proxy, configurar `TRUST_PROXY`. Los flyers necesitan un disco persistente (`UPLOAD_DIR`) o un almacenamiento de archivos (S3, R2).
-3. **Configurar el envío de mails** (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `PUBLIC_URL`, ver [MAILS.md](MAILS.md)) con un proveedor como Resend o Brevo, con el dominio verificado (SPF y DKIM) para que no caigan en spam.
-4. **Límites de pedidos compartidos** (por ejemplo con Redis) si se corre más de una instancia del servidor.
-5. `npm audit` marca alertas en la herramienta de línea de comandos de Prisma (soporte MySQL y lectura de su configuración). No afectan a la ticketera: revisar al actualizar Prisma.
-6. **Más gestión de eventos**: editar, cancelar con reintegros, imagen, cierre de venta.
+1. **Mercado Pago:** ya probado con plata real ([MERCADOPAGO.md](MERCADOPAGO.md)). Consultar con un contador la facturación del cargo por servicio.
+2. **Páginas legales** (`terminos.html`, `privacidad.html`, `devoluciones.html`): son borradores. Completar lo marcado en amarillo (titular, CUIT, domicilio, plazos, inscripción ante la AAIP) y hacerlas revisar por un abogado. El email de contacto está en `public/js/common.js` (`SITE.contactEmail`).
+3. **Publicar online** con https y PostgreSQL (cambiar `provider` y el adapter de Prisma). Detrás de un proxy, configurar `TRUST_PROXY`. Los flyers necesitan un disco persistente (`UPLOAD_DIR`) o un almacenamiento de archivos (S3, R2).
+4. **Configurar el envío de mails** (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`, `PUBLIC_URL`, ver [MAILS.md](MAILS.md)) con un proveedor como Resend o Brevo, con el dominio verificado (SPF y DKIM) para que no caigan en spam.
+5. **Límites de pedidos compartidos** (por ejemplo con Redis) si se corre más de una instancia del servidor.
+6. `npm audit` marca alertas en la herramienta de línea de comandos de Prisma (soporte MySQL y lectura de su configuración). No afectan a la ticketera: revisar al actualizar Prisma.
+7. **Más gestión de eventos**: editar, cancelar con reintegros, imagen, cierre de venta.

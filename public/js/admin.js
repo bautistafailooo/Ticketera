@@ -5,6 +5,7 @@ const message = document.getElementById("message");
 const pendingEl = document.getElementById("pending");
 const eventsEl = document.getElementById("events");
 const organizersEl = document.getElementById("organizers");
+const revocationsEl = document.getElementById("revocations");
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", {
   dateStyle: "short",
@@ -103,12 +104,41 @@ function renderOrganizers(users) {
     </table></div>`;
 }
 
+function renderRevocations(requests) {
+  const open = requests.filter((r) => !r.resolvedAt).length;
+  document.getElementById("revocations-count").textContent = open ? `${open} sin resolver` : "";
+  if (requests.length === 0) {
+    revocationsEl.innerHTML = '<p class="muted">No hay pedidos.</p>';
+    return;
+  }
+  revocationsEl.innerHTML = `
+    <div class="table-wrap"><table>
+      <thead><tr><th>Código</th><th>Fecha</th><th>Comprador</th><th>Compra</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        ${requests.map((r) => `
+          <tr>
+            <td class="mono">${escapeHtml(r.code)}</td>
+            <td>${escapeHtml(dateFormatter.format(new Date(r.createdAt)))}</td>
+            <td class="wrap">${escapeHtml(r.name)}<div class="faint small">${escapeHtml(r.email)}</div>${r.reason ? `<div class="small">${escapeHtml(r.reason)}</div>` : ""}</td>
+            <td class="wrap">${r.order
+              ? `${escapeHtml(r.order.event.name)}<div class="faint small">${formatPrice(r.order.totalCents)} · compra del ${escapeHtml(dateFormatter.format(new Date(r.order.createdAt)))}${r.order.event.organizer ? ` · organiza ${escapeHtml(r.order.event.organizer.name)} (${escapeHtml(r.order.event.organizer.email)})` : ""}</div>`
+              : `<span class="faint">No identificada</span>${r.reference ? `<div class="faint small">${escapeHtml(r.reference)}</div>` : ""}`}</td>
+            <td>${r.resolvedAt
+              ? `<span class="badge ok">Resuelto</span>${r.resolutionNote ? `<div class="faint small">${escapeHtml(r.resolutionNote)}</div>` : ""}`
+              : '<span class="badge warn">Pendiente</span>'}</td>
+            <td><div class="row-actions">${r.resolvedAt ? "" : button("Marcar resuelto", "resolve-revocation", r.id)}</div></td>
+          </tr>`).join("")}
+      </tbody>
+    </table></div>`;
+}
+
 async function load() {
   try {
-    const [events, users] = await Promise.all([api("/admin/events"), api("/admin/organizers")]);
+    const [events, users, revocations] = await Promise.all([api("/admin/events"), api("/admin/organizers"), api("/admin/arrepentimientos")]);
     renderPending(events);
     renderEvents(events);
     renderOrganizers(users);
+    renderRevocations(revocations);
   } catch (err) {
     message.textContent = err.message;
   }
@@ -127,6 +157,10 @@ const ACTIONS = {
     confirm: "Todos sus eventos van a salir de la cartelera y no va a poder publicar. ¿Continuar?",
   },
   unsuspend: { path: (id) => `/admin/organizers/${id}/unsuspend` },
+  "resolve-revocation": {
+    path: (id) => `/admin/arrepentimientos/${id}/resolve`,
+    note: "¿Cómo se resolvió? Ej.: devolución hecha por Mercado Pago el 3/10, o compra fuera de plazo (respondido por mail).",
+  },
 };
 
 document.querySelector("main").addEventListener("click", async (e) => {

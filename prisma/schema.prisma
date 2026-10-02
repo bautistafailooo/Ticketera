@@ -133,6 +133,7 @@ model Order {
   emailedAt   DateTime?
   createdAt   DateTime    @default(now())
   tickets     Ticket[]
+  revocations RevocationRequest[]
 
   @@index([status, expiresAt])
 }
@@ -148,4 +149,25 @@ model Ticket {
   priceCents   Int
   usedAt       DateTime?
   createdAt    DateTime   @default(now())
+}
+
+// Pedidos del "botón de arrepentimiento" (Res. 424/2020): el comprador revoca la compra.
+// Se guardan siempre, aunque no se pueda identificar la compra, y se responden con un código.
+model RevocationRequest {
+  id             String    @id @default(cuid())
+  // Código de trámite que se le da al comprador (ej. ARR-7K2M9Q).
+  code           String    @unique
+  name           String
+  email          String
+  // Lo que escribió para identificar la compra (código de una entrada o link de la compra).
+  reference      String?
+  reason         String?
+  // La compra, si se pudo identificar y el email coincide con el del comprador.
+  order          Order?    @relation(fields: [orderId], references: [id])
+  orderId        String?
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+  resolutionNote String?
+
+  @@index([resolvedAt, createdAt])
 }

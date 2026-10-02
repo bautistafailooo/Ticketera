@@ -66,6 +66,7 @@ function render(event) {
           <label for="email">Email</label>
           <input id="email" type="email" required maxlength="200" autocomplete="email">
           <p class="field-hint">Hasta ${MAX_TICKETS} entradas por compra. Tenés 15 minutos para pagar; después las entradas se liberan.</p>
+          <p class="field-hint">Al comprar aceptás los <a href="/terminos.html" target="_blank">Términos y condiciones</a>, la <a href="/privacidad.html" target="_blank">Política de privacidad</a> y la <a href="/devoluciones.html" target="_blank">Política de devoluciones</a>.</p>
           <button type="submit" class="btn btn-gradient btn-block" id="buy" style="margin-top: 16px" disabled>Comprar</button>
           <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
         </form>

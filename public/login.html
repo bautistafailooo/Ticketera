@@ -39,6 +39,7 @@
           <label for="password">Contraseña</label>
           <input id="password" type="password" required minlength="8" maxlength="200" autocomplete="current-password">
           <p class="field-hint" id="password-hint" hidden>Al menos 8 caracteres.</p>
+          <p class="field-hint" id="terms-hint" hidden>Al crear tu cuenta aceptás los <a href="/terminos.html" target="_blank">Términos y condiciones</a> y la <a href="/privacidad.html" target="_blank">Política de privacidad</a>.</p>
           <p style="margin: 10px 0 0; text-align: right" id="forgot-link-row"><button type="button" class="link-button small" id="forgot-link">¿Olvidaste tu contraseña?</button></p>
           <button type="submit" id="submit" class="btn btn-gradient btn-block" style="margin-top: 20px">Ingresar</button>
           <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
@@ -61,6 +62,13 @@
     <div class="container">
       <span>© <span data-site-name>ecko</span></span>
       <a href="/">Ver la cartelera</a>
+      <nav class="legal-links" aria-label="Legales">
+        <a href="/terminos.html">Términos y condiciones</a>
+        <a href="/privacidad.html">Privacidad</a>
+        <a href="/devoluciones.html">Devoluciones</a>
+        <a href="/arrepentimiento.html" class="revocation-link">Botón de arrepentimiento</a>
+        <a data-contact-email>Contacto</a>
+      </nav>
     </div>
   </footer>
 

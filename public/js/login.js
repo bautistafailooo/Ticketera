@@ -21,6 +21,7 @@ function setMode(newMode) {
   nameInput.required = mode === "register";
   password.autocomplete = mode === "login" ? "current-password" : "new-password";
   document.getElementById("password-hint").hidden = mode === "login";
+  document.getElementById("terms-hint").hidden = mode === "login";
   document.getElementById("forgot-link-row").hidden = mode !== "login";
   submit.textContent = mode === "login" ? "Ingresar" : "Crear cuenta";
   message.textContent = "";

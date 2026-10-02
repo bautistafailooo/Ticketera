@@ -125,3 +125,34 @@ for (const [action, data] of Object.entries(organizerActions)) {
     res.json({ ok: true });
   });
 }
+
+// --- Botón de arrepentimiento ---
+
+adminRouter.get("/arrepentimientos", async (_req, res) => {
+  const requests = await prisma.revocationRequest.findMany({
+    orderBy: [{ resolvedAt: { sort: "asc", nulls: "first" } }, { createdAt: "desc" }],
+    take: 100,
+    include: {
+      order: {
+        select: {
+          id: true,
+          status: true,
+          totalCents: true,
+          createdAt: true,
+          event: { select: { name: true, startsAt: true, organizer: { select: { name: true, email: true } } } },
+        },
+      },
+    },
+  });
+  res.json(requests);
+});
+
+adminRouter.post("/arrepentimientos/:id/resolve", async (req, res) => {
+  const { note } = noteSchema.parse(req.body);
+  const updated = await prisma.revocationRequest.updateMany({
+    where: { id: String(req.params.id), resolvedAt: null },
+    data: { resolvedAt: new Date(), resolutionNote: note },
+  });
+  if (updated.count === 0) throw new HttpError(404, "Pedido no encontrado o ya resuelto");
+  res.json({ ok: true });
+});

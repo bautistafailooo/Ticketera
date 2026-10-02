@@ -167,3 +167,35 @@ export function paymentRefunded({ buyerName, eventName, totalCents, eventUrl }: 
     text: `Hola ${buyerName}, tu pago de ${formatPrice(totalCents)} para ${eventName} llegó cuando la reserva ya había vencido y no quedaban entradas. Te devolvimos el total por Mercado Pago.\n${eventUrl}`,
   };
 }
+
+// Botón de arrepentimiento: constancia para el comprador, con el código de trámite.
+export function revocationReceived({ name, code, eventName }: { name: string; code: string; eventName: string | null }) {
+  const html = layout({
+    preheader: `Recibimos tu pedido de arrepentimiento. Código ${code}`,
+    body: `
+      ${h1("Recibimos tu pedido")}
+      ${p(`Hola ${esc(name)}, recibimos tu pedido de revocación (botón de arrepentimiento)${eventName ? ` de la compra para <b>${esc(eventName)}</b>` : ""}.`)}
+      ${p(`Tu código de trámite es <b style="font-family:'Courier New',monospace;font-size:18px">${esc(code)}</b>. Guardalo para cualquier consulta.`)}
+      ${muted("Vamos a revisar el pedido y te vamos a escribir a este mail con la respuesta.")}`,
+  });
+  return {
+    subject: `Pedido de arrepentimiento recibido · ${code}`,
+    html,
+    text: `Hola ${name}, recibimos tu pedido de revocación${eventName ? ` de la compra para ${eventName}` : ""}. Tu código de trámite es ${code}. Te vamos a responder a este mail.`,
+  };
+}
+
+export function revocationForAdmins(r: { code: string; name: string; email: string; reference: string | null; reason: string | null; eventName: string | null; url: string }) {
+  const html = layout({
+    preheader: `Nuevo pedido de arrepentimiento ${r.code}`,
+    body: `
+      ${h1("Nuevo pedido de arrepentimiento")}
+      ${p(`<b>Código:</b> ${esc(r.code)}<br><b>Nombre:</b> ${esc(r.name)}<br><b>Email:</b> ${esc(r.email)}<br><b>Compra:</b> ${r.eventName ? esc(r.eventName) : "no identificada"}${r.reference ? `<br><b>Referencia:</b> ${esc(r.reference)}` : ""}${r.reason ? `<br><b>Motivo:</b> ${esc(r.reason)}` : ""}`)}
+      ${button(r.url, "Ver en Administración")}`,
+  });
+  return {
+    subject: `Arrepentimiento ${r.code}${r.eventName ? ` · ${r.eventName}` : ""}`,
+    html,
+    text: `Nuevo pedido de arrepentimiento ${r.code} de ${r.name} <${r.email}>. Ver: ${r.url}`,
+  };
+}
