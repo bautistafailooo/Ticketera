@@ -148,7 +148,21 @@ export async function setupPanelPage() {
   const section = location.pathname.startsWith("/admin") ? "admin" : "panel";
   document.querySelector(`[data-section="${section}"]`)?.setAttribute("aria-current", "page");
   const notice = document.getElementById("account-notice");
-  if (notice && user.suspended) {
+  if (notice && !user.verified && !user.suspended) {
+    notice.innerHTML = `<span><strong>Confirmá tu email.</strong> Te mandamos un link a ${escapeHtml(user.email)}. Hasta confirmarlo podés preparar eventos, pero no publicarlos ni conectar Mercado Pago.</span>
+      <button type="button" class="link-button" id="resend-verification">Reenviar mail</button>`;
+    notice.classList.add("warn");
+    notice.hidden = false;
+    document.getElementById("resend-verification").addEventListener("click", async (e) => {
+      e.target.disabled = true;
+      try {
+        const res = await api("/auth/resend-verification", { method: "POST" });
+        e.target.textContent = `Enviado a ${res.email}`;
+      } catch (err) {
+        e.target.textContent = err.message;
+      }
+    });
+  } else if (notice && user.suspended) {
     notice.textContent = "Tu cuenta está suspendida: tus eventos no aparecen en la cartelera y no podés publicar. Escribinos si creés que es un error.";
     notice.classList.add("danger");
     notice.hidden = false;

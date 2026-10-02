@@ -5,6 +5,8 @@ import {
   SESSION_COOKIE,
   currentUser,
   hashPassword,
+  requireUser,
+  userOf,
   publicUser,
   readSessionToken,
   startSession,
@@ -12,7 +14,7 @@ import {
 } from "../auth.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
-import { sendPasswordReset } from "../mail/messages.js";
+import { sendEmailVerification, sendPasswordReset } from "../mail/messages.js";
 import { sendInBackground } from "../mail/transport.js";
 import { rateLimits } from "../security.js";
 
@@ -42,6 +44,7 @@ authRouter.post("/register", rateLimits.auth, async (req, res) => {
     data: { name, email, passwordHash: await hashPassword(password) },
   });
   await startSession(res, user.id);
+  await sendVerification(user);
   res.status(201).json(publicUser(user));
 });
 
@@ -119,4 +122,42 @@ authRouter.post("/reset", rateLimits.forgotPassword, async (req, res) => {
   });
   await startSession(res, reset.userId);
   res.json({ ok: true });
+});
+
+// --- Confirmar el email ---
+// Hasta confirmarlo, el organizador puede preparar eventos pero no publicarlos ni conectar Mercado Pago.
+
+const VERIFY_HOURS = 48;
+
+async function sendVerification(user: { id: string; email: string; name: string }) {
+  const token = randomBytes(32).toString("base64url");
+  await prisma.emailVerification.create({
+    data: { tokenHash: hashToken(token), userId: user.id, expiresAt: new Date(Date.now() + VERIFY_HOURS * 60 * 60 * 1000) },
+  });
+  sendInBackground("confirmar email", () => sendEmailVerification(user, token));
+}
+
+// No pide sesión: el link se puede abrir desde el celular aunque la cuenta se haya creado en la compu.
+authRouter.post("/verify-email", rateLimits.forgotPassword, async (req, res) => {
+  const { token } = z.object({ token: z.string().min(20).max(200) }).parse(req.body);
+  const verification = await prisma.emailVerification.findUnique({ where: { tokenHash: hashToken(token) } });
+  if (!verification || verification.expiresAt < new Date()) {
+    throw new HttpError(400, "El link venció. Entrá a tu panel y pedí uno nuevo.");
+  }
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: verification.userId } });
+  // Abrirlo dos veces no es un error: el email ya quedó confirmado.
+  if (!user.emailVerifiedAt) {
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: user.id }, data: { emailVerifiedAt: new Date() } }),
+      prisma.emailVerification.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } }),
+    ]);
+  }
+  res.json({ ok: true, email: user.email });
+});
+
+authRouter.post("/resend-verification", requireUser, rateLimits.forgotPassword, async (_req, res) => {
+  const user = userOf(res);
+  if (user.emailVerifiedAt) throw new HttpError(409, "Tu email ya está confirmado");
+  await sendVerification(user);
+  res.json({ ok: true, email: user.email });
 });

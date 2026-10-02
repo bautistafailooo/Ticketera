@@ -15,7 +15,7 @@ if (!user) {
 
 await prisma.user.update({
   where: { id: user.id },
-  data: { role: "ADMIN", suspendedAt: null },
+  data: { role: "ADMIN", suspendedAt: null, emailVerifiedAt: user.emailVerifiedAt ?? new Date() },
 });
 console.log(`${email} ahora es administrador.`);
 await prisma.$disconnect();

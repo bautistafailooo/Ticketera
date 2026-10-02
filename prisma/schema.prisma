@@ -51,9 +51,23 @@ model User {
   events       Event[]
   sessions     Session[]
   resets       PasswordReset[]
+  // Confirmó su email con el link que se le mandó. Sin esto no puede publicar ni cobrar.
+  emailVerifiedAt DateTime?
+  verifications   EmailVerification[]
 }
 
 // Link de "olvidé mi contraseña". Se guarda el hash del token, nunca el token.
+// Link para confirmar el email de una cuenta (se guarda solo el hash del token).
+model EmailVerification {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
 model PasswordReset {
   id        String    @id @default(cuid())
   tokenHash String    @unique
@@ -104,6 +118,12 @@ model TicketType {
   priceCents Int
   capacity   Int
   sold       Int      @default(0)
+  // Lotes: la venta de este tipo termina en esta fecha (ej. preventa hasta el viernes)…
+  salesEndAt DateTime?
+  // …y/o empieza recién cuando termina otro tipo (se agota o vence). Ej.: "Primera tanda" después de "Early bird".
+  opensAfter   TicketType?  @relation("Lotes", fields: [opensAfterId], references: [id], onDelete: SetNull)
+  opensAfterId String?
+  nextLots     TicketType[] @relation("Lotes")
   tickets    Ticket[]
 
   @@unique([eventId, name])
@@ -122,6 +142,8 @@ model Order {
   totalCents  Int
   // Cargo por servicio (la comisión de ecko). Lo paga el comprador.
   feeCents    Int         @default(0)
+  // Cortesía: entradas gratis que generó el organizador para invitados.
+  complimentary Boolean   @default(false)
   // Pago de Mercado Pago que confirmó la orden (o que se devolvió por llegar tarde).
   mpPaymentId String?     @unique
   paidAt      DateTime?

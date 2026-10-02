@@ -105,6 +105,22 @@ export function orderConfirmed(order: OrderMail) {
   return { subject: `Tus entradas para ${order.event.name}`, html, text };
 }
 
+export function emailVerification({ name, url }: { name: string; url: string }) {
+  const html = layout({
+    preheader: "Confirmá tu email para empezar a vender",
+    body: `
+      ${h1("Confirmá tu email")}
+      ${p(`Hola ${esc(name)}, gracias por crear tu cuenta de organizador en ecko. Confirmá tu email para poder publicar eventos y cobrar.`)}
+      ${button(url, "Confirmar mi email")}
+      ${muted("El link vale por 48 horas. Si no creaste una cuenta en ecko, ignorá este mail.")}`,
+  });
+  return {
+    subject: "Confirmá tu email de ecko",
+    html,
+    text: `Hola ${name}, confirmá tu email entrando a: ${url}\nEl link vale por 48 horas.`,
+  };
+}
+
 export function passwordReset({ name, url }: { name: string; url: string }) {
   const html = layout({
     preheader: "Creá una contraseña nueva",

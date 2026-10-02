@@ -99,5 +99,6 @@ export function publicUser(user: SessionUser) {
     role: user.role,
     trusted: isTrusted(user),
     suspended: user.suspendedAt !== null,
+    verified: user.emailVerifiedAt !== null,
   };
 }

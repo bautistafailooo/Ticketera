@@ -11,6 +11,7 @@ beforeEach(async () => {
   await prisma.event.deleteMany();
   await prisma.session.deleteMany();
   await prisma.passwordReset.deleteMany();
+  await prisma.emailVerification.deleteMany();
   await prisma.user.deleteMany();
   sentMails.length = 0;
 });

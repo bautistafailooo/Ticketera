@@ -2,16 +2,21 @@ import request from "supertest";
 import { expect } from "vitest";
 import { createApp } from "../src/app.js";
 import { prisma } from "../src/db.js";
+import { sentMails } from "../src/mail/transport.js";
 
 export const app = createApp();
 
 export const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
 // Organizador logueado. Por defecto confiable (publica sin revisión) para simplificar los tests.
-export async function organizer(email = "org@example.com", { trusted = true } = {}) {
+export async function organizer(email = "org@example.com", { trusted = true, verified = true } = {}) {
   const agent = request.agent(app);
   const res = await agent.post("/auth/register").send({ name: "Org", email, password: "secreta123" });
   expect(res.status).toBe(201);
+  // Al registrarse se manda el mail para confirmar el email: se da por confirmado y se descarta.
+  await expect.poll(() => sentMails.some((m) => m.to === email)).toBe(true);
+  sentMails.splice(sentMails.findIndex((m) => m.to === email), 1);
+  if (verified) await prisma.user.update({ where: { email }, data: { emailVerifiedAt: new Date() } });
   if (trusted) {
     await prisma.user.update({ where: { email }, data: { trustedAt: new Date() } });
   }

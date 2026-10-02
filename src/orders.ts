@@ -38,4 +38,5 @@ export async function expireOrders(now = new Date()) {
 export async function cleanupSessions(now = new Date()) {
   await prisma.session.deleteMany({ where: { expiresAt: { lt: now } } });
   await prisma.passwordReset.deleteMany({ where: { expiresAt: { lt: now } } });
+  await prisma.emailVerification.deleteMany({ where: { expiresAt: { lt: now } } });
 }

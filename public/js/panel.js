@@ -19,7 +19,9 @@ if (mpResult) history.replaceState(null, "", "/panel.html");
 async function loadMercadoPago() {
   const mp = await api("/organizer/mercadopago");
   if (!mp.available) return;
-  const result = mpResult === "ok"
+  const result = mpResult === "verificar"
+    ? '<p class="notice warn">Primero confirmá tu email con el link que te mandamos. Después vas a poder conectar Mercado Pago.</p>'
+    : mpResult === "ok"
     ? '<p class="notice ok">¡Listo! Tu cuenta de Mercado Pago quedó conectada.</p>'
     : mpResult === "error"
       ? '<p class="notice danger">No se pudo conectar la cuenta de Mercado Pago. Probá de nuevo.</p>'

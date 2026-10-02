@@ -56,6 +56,11 @@ export async function sendPaymentRefunded(orderId: string) {
   });
 }
 
+export async function sendEmailVerification(user: { email: string; name: string }, token: string) {
+  const url = `${config.publicUrl}/verificar.html#${encodeURIComponent(token)}`;
+  await sendMail({ to: user.email, ...templates.emailVerification({ name: user.name, url }) });
+}
+
 export async function sendPasswordReset(user: { email: string; name: string }, token: string) {
   const url = `${config.publicUrl}/restablecer.html#${encodeURIComponent(token)}`;
   await sendMail({ to: user.email, ...templates.passwordReset({ name: user.name, url }) });

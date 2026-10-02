@@ -20,12 +20,13 @@ async function main() {
 
   const organizer = await prisma.user.upsert({
     where: { email: DEMO_ORGANIZER.email },
-    update: { role: "ADMIN", suspendedAt: null },
+    update: { role: "ADMIN", suspendedAt: null, emailVerifiedAt: new Date() },
     create: {
       name: "Organizador de prueba",
       email: DEMO_ORGANIZER.email,
       passwordHash: await hashPassword(DEMO_ORGANIZER.password),
       role: "ADMIN",
+      emailVerifiedAt: new Date(),
     },
   });
   console.log(`Administrador de prueba: ${DEMO_ORGANIZER.email} / ${DEMO_ORGANIZER.password}`);

@@ -229,6 +229,7 @@ organizerRouter.post("/events/:id/publish", async (req, res) => {
   const user = userOf(res);
   const event = await findOwnEvent(req.params.id, user.id);
   if (user.suspendedAt) throw new HttpError(403, "Tu cuenta está suspendida");
+  if (!user.emailVerifiedAt) throw new HttpError(403, "Confirmá tu email para poder publicar (te mandamos un link)");
   if (event.status !== "DRAFT" && event.status !== "REJECTED") {
     throw new HttpError(409, "El evento ya fue publicado o enviado a revisión");
   }
@@ -283,6 +284,10 @@ organizerRouter.get("/mercadopago", (_req, res) => {
 // Lleva al organizador a Mercado Pago para que autorice a ecko a cobrar en su nombre.
 organizerRouter.get("/mercadopago/connect", (_req, res) => {
   if (!config.mercadoPago) throw new HttpError(503, "Mercado Pago no está configurado");
+  if (!userOf(res).emailVerifiedAt) {
+    res.redirect("/panel.html?mp=verificar");
+    return;
+  }
   // "state": un valor al azar que tiene que volver igual, para que nadie pueda conectar
   // su propia cuenta en el panel de otro organizador con un link armado.
   const state = randomBytes(24).toString("base64url");

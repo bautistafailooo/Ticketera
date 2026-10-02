@@ -15,7 +15,7 @@ await prisma.$queryRawUnsafe("PRAGMA busy_timeout = 5000");
 if (config.adminEmail) {
   const promoted = await prisma.user.updateMany({
     where: { email: config.adminEmail, role: { not: "ADMIN" } },
-    data: { role: "ADMIN", suspendedAt: null },
+    data: { role: "ADMIN", suspendedAt: null, emailVerifiedAt: new Date() },
   });
   if (promoted.count > 0) console.log(`${config.adminEmail} ahora es administrador.`);
   else if (!(await prisma.user.findUnique({ where: { email: config.adminEmail } }))) {
