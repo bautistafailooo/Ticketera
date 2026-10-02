@@ -12,6 +12,7 @@ import { sendInBackground } from "../mail/transport.js";
 import { serviceFee } from "../payments/fee.js";
 import { createPreference, sellerToken } from "../payments/mercadopago.js";
 import { markOrderPaid, syncOrderPayments } from "../payments/process.js";
+import { mapLinks } from "../maps.js";
 import { generateTicketCode } from "../ticket-code.js";
 
 export const ordersRouter = Router();
@@ -156,6 +157,7 @@ ordersRouter.get("/:id", async (req, res) => {
           id: true,
           name: true,
           venue: true,
+          address: true,
           startsAt: true,
           imageFile: true,
           organizer: { select: { mpAccessToken: true } },
@@ -176,7 +178,7 @@ ordersRouter.get("/:id", async (req, res) => {
     expiresAt: full.expiresAt,
     createdAt: full.createdAt,
     refunded: full.refundedAt !== null,
-    event,
+    event: { ...event, directionsUrl: mapLinks(event.address)?.directionsUrl ?? null },
     // Cómo se puede pagar: con Mercado Pago (si el organizador conectó su cuenta) y, en pruebas, simulado.
     payment: {
       mercadoPago: Boolean(config.mercadoPago && organizer?.mpAccessToken),

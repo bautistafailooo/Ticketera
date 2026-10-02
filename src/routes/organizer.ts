@@ -22,6 +22,13 @@ const createEventSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).optional(),
   venue: z.string().trim().min(1).max(200),
+  // Vacía = sin mapa.
+  address: z
+    .string()
+    .trim()
+    .max(200)
+    .transform((value) => value || null)
+    .optional(),
   startsAt: z.coerce.date().refine(inTheFuture, "Tiene que ser una fecha futura"),
 });
 

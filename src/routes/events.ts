@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { onSaleWhere } from "../events.js";
+import { mapLinks } from "../maps.js";
 
 // Rutas públicas: solo muestran eventos a la venta (publicados, de organizadores
 // no suspendidos y que todavía no empezaron).
@@ -14,6 +15,7 @@ const publicEvent = {
   description: true,
   imageFile: true,
   venue: true,
+  address: true,
   startsAt: true,
   ticketTypes: {
     select: { id: true, name: true, priceCents: true, capacity: true, sold: true },
@@ -36,5 +38,5 @@ eventsRouter.get("/:id", async (req, res) => {
     select: publicEvent,
   });
   if (!event) throw new HttpError(404, "Evento no encontrado o sin venta disponible");
-  res.json({ ...event, serviceFeePercent: config.serviceFeePercent });
+  res.json({ ...event, map: mapLinks(event.address), serviceFeePercent: config.serviceFeePercent });
 });

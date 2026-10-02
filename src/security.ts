@@ -16,6 +16,8 @@ export const securityHeaders = helmet({
       imgSrc: ["'self'", "data:", "blob:"],
       mediaSrc: ["'self'", "blob:"],
       connectSrc: ["'self'"],
+      // Mapa de Google Maps en la página del evento.
+      frameSrc: ["https://www.google.com", "https://maps.google.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       formAction: ["'self'"],

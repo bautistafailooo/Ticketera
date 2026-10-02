@@ -93,7 +93,7 @@ function render(event) {
       <div>
         <span class="badge ${escapeHtml(event.status)}">${EVENT_STATUS[event.status]}</span>
         <h1 style="margin: 8px 0 4px">${escapeHtml(event.name)}</h1>
-        <div class="muted">${escapeHtml(formatDate(event.startsAt))} h · ${escapeHtml(event.venue)}</div>
+        <div class="muted">${escapeHtml(formatDate(event.startsAt))} h · ${escapeHtml(event.venue)}${event.address ? ` · ${escapeHtml(event.address)}` : ""}</div>
         <p class="visibility ${event.visibility.visible ? "ok" : ""}">
           ${event.visibility.visible ? "Visible en la cartelera" : `No aparece en la cartelera: ${escapeHtml(event.visibility.reason)}`}
         </p>
@@ -171,6 +171,9 @@ function render(event) {
           <div><label for="ev-venue">Lugar</label><input id="ev-venue" required maxlength="200" value="${escapeHtml(event.venue)}"></div>
           <div><label for="ev-startsAt">Fecha y hora</label><input id="ev-startsAt" type="datetime-local" required value="${argentinaLocalValue(event.startsAt)}"></div>
         </div>
+        <label for="ev-address">Dirección <span class="faint">(opcional)</span></label>
+        <input id="ev-address" maxlength="200" placeholder="Ej: Av. del Libertador 7395, CABA" value="${escapeHtml(event.address ?? "")}">
+        <p class="field-hint">Con la dirección, la página del evento muestra un mapa y el botón "Cómo llegar".</p>
         <div class="form-actions"><button type="submit" class="btn btn-secondary">Guardar cambios</button></div>
         <p id="ev-message" class="error" role="alert" style="margin: 12px 0 0"></p>
       </form>` : ""}
@@ -283,6 +286,7 @@ function bind(event) {
           name: document.getElementById("ev-name").value,
           description: document.getElementById("ev-description").value,
           venue: document.getElementById("ev-venue").value,
+          address: document.getElementById("ev-address").value,
           startsAt: argentinaDate(document.getElementById("ev-startsAt").value),
         }),
       });

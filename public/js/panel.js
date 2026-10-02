@@ -73,6 +73,7 @@ form.addEventListener("submit", async (e) => {
         name: document.getElementById("name").value,
         description: document.getElementById("description").value || undefined,
         venue: document.getElementById("venue").value,
+        address: document.getElementById("address").value || undefined,
         startsAt: argentinaDate(startsAt.value),
       }),
     });

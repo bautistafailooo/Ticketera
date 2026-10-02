@@ -60,7 +60,8 @@ type OrderMail = {
   totalCents: number;
   feeCents: number;
   orderUrl: string;
-  event: { name: string; venue: string; startsAt: Date };
+  event: { name: string; venue: string; address: string | null; startsAt: Date };
+  directionsUrl: string | null;
   tickets: { ticketType: string; code: string; cid: string }[];
 };
 
@@ -88,7 +89,7 @@ export function orderConfirmed(order: OrderMail) {
     body: `
       ${h1("¡Tus entradas están listas!")}
       ${p(`Hola ${esc(order.buyerName)}, tu compra para <b>${esc(order.event.name)}</b> está confirmada.`)}
-      ${p(`<b>Cuándo:</b> ${esc(formatDate(order.event.startsAt))}<br><b>Dónde:</b> ${esc(order.event.venue)}<br><b>Total:</b> ${esc(formatPrice(order.totalCents))}${order.feeCents > 0 ? ` (incluye ${esc(formatPrice(order.feeCents))} de cargo por servicio)` : ""}`)}
+      ${p(`<b>Cuándo:</b> ${esc(formatDate(order.event.startsAt))}<br><b>Dónde:</b> ${esc(order.event.venue)}${order.event.address ? ` · ${esc(order.event.address)}` : ""}${order.directionsUrl ? ` (<a href="${esc(order.directionsUrl)}" style="color:#b35cff">cómo llegar</a>)` : ""}<br><b>Total:</b> ${esc(formatPrice(order.totalCents))}${order.feeCents > 0 ? ` (incluye ${esc(formatPrice(order.feeCents))} de cargo por servicio)` : ""}`)}
       ${muted("Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código.")}
       ${tickets}
       ${button(order.orderUrl, "Ver mis entradas")}
@@ -96,7 +97,8 @@ export function orderConfirmed(order: OrderMail) {
   });
   const text = [
     `¡Tus entradas están listas!`,
-    `${order.event.name} — ${formatDate(order.event.startsAt)} — ${order.event.venue}`,
+    `${order.event.name} — ${formatDate(order.event.startsAt)} — ${order.event.venue}${order.event.address ? `, ${order.event.address}` : ""}`,
+    ...(order.directionsUrl ? [`Cómo llegar: ${order.directionsUrl}`] : []),
     ...order.tickets.map((t, i) => `Entrada ${i + 1}: ${t.ticketType} — código ${t.code}`),
     `Ver tus entradas: ${order.orderUrl}`,
   ].join("\n");

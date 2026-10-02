@@ -82,6 +82,8 @@ model Event {
   // Nombre del archivo del flyer dentro de la carpeta de subidas.
   imageFile   String?
   venue       String
+  // Dirección para el mapa y el botón "Cómo llegar" (opcional).
+  address     String?
   startsAt    DateTime
   status      EventStatus  @default(DRAFT)
   // Clave del link de puerta: permite validar entradas de este evento sin cuenta.

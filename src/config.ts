@@ -26,6 +26,8 @@ export const config = {
   mailOutboxDir: path.resolve(env.MAIL_OUTBOX_DIR ?? "mail-outbox"),
   // "memory" guarda los mails en memoria (tests).
   mailTransport: env.MAIL_TRANSPORT,
+  // Clave opcional de la API de mapas embebidos de Google (Maps Embed API, gratuita).
+  googleMapsEmbedKey: env.GOOGLE_MAPS_EMBED_KEY?.trim() || undefined,
   // Cargo por servicio que paga el comprador, en % del valor de las entradas (la comisión de ecko).
   serviceFeePercent: Number(env.SERVICE_FEE_PERCENT ?? 10),
   // Aplicación de Mercado Pago de ecko (ver MERCADOPAGO.md). Sin esto, no se cobra con Mercado Pago.

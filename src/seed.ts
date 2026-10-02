@@ -47,7 +47,8 @@ async function main() {
     {
       name: "Noche de Rock Nacional",
       description: "Las mejores bandas del rock argentino en una sola noche.",
-      venue: "Estadio Obras, Buenos Aires",
+      venue: "Estadio Obras",
+      address: "Av. del Libertador 7395, CABA",
       startsAt: daysFromNow(30, "21:00"),
       ticketTypes: [
         { name: "Campo", priceCents: 3500000, capacity: 500 },
@@ -57,7 +58,8 @@ async function main() {
     {
       name: "Stand Up: Humor a la Carta",
       description: "Cuatro comediantes, una noche de risas.",
-      venue: "Teatro Gran Rex, Buenos Aires",
+      venue: "Teatro Gran Rex",
+      address: "Av. Corrientes 857, CABA",
       startsAt: daysFromNow(45, "20:30"),
       ticketTypes: [
         { name: "General", priceCents: 2000000, capacity: 300 },
@@ -66,7 +68,8 @@ async function main() {
     },
     {
       name: "Festival Electrónico de Verano",
-      venue: "Costanera Sur, Buenos Aires",
+      venue: "Costanera Sur",
+      address: "Av. Tristán Achával Rodríguez 1550, CABA",
       startsAt: daysFromNow(70, "18:00"),
       ticketTypes: [{ name: "Early Bird", priceCents: 4500000, capacity: 1000 }],
     },

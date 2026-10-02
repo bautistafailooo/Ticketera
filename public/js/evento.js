@@ -38,7 +38,7 @@ function render(event) {
           <h1>${escapeHtml(event.name)}</h1>
           <div class="where">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>
-            ${escapeHtml(event.venue)}
+            <span>${escapeHtml(event.venue)}${event.address ? `<span class="address">${escapeHtml(event.address)}</span>` : ""}</span>
           </div>
           ${event.description ? `<p class="description">${escapeHtml(event.description)}</p>` : ""}
         </div>
@@ -66,6 +66,19 @@ function render(event) {
           <p id="message" class="error" role="alert" style="margin: 12px 0 0"></p>
         </form>
       </div>
+      ${event.map ? `
+      <section class="card map-card">
+        <div class="map-head">
+          <div>
+            <h2>Cómo llegar</h2>
+            <p class="muted" style="margin: 0">${escapeHtml(event.venue)} · ${escapeHtml(event.address)}</p>
+          </div>
+          <a class="btn btn-secondary" href="${escapeHtml(event.map.directionsUrl)}" target="_blank" rel="noopener">Abrir en Google Maps</a>
+        </div>
+        <div class="map-frame">
+          <iframe src="${escapeHtml(event.map.embedUrl)}" title="Mapa de ${escapeHtml(event.venue)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+        </div>
+      </section>` : ""}
     </main>
 
     <div class="mobile-bar" id="mobile-bar" ${allSoldOut ? "hidden" : ""}>

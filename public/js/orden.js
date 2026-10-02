@@ -140,6 +140,7 @@ function renderPaid(order) {
   content.innerHTML = `
     ${header(order, '<span class="badge ok">¡Compra confirmada!</span>')}
     <p class="notice ok">Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código que está debajo.</p>
+    ${order.event.directionsUrl ? `<p><a class="btn btn-secondary" href="${escapeHtml(order.event.directionsUrl)}" target="_blank" rel="noopener">Cómo llegar</a></p>` : ""}
     <div class="tickets">
       ${order.tickets.map((ticket, i) => `
         <article class="ticket-stub">
@@ -149,7 +150,7 @@ function renderPaid(order) {
             <strong>${escapeHtml(order.event.name)}</strong>
             <dl>
               <dt>Cuándo</dt><dd>${escapeHtml(when)} h</dd>
-              <dt>Dónde</dt><dd>${escapeHtml(order.event.venue)}</dd>
+              <dt>Dónde</dt><dd>${escapeHtml(order.event.venue)}${order.event.address ? `<br><span class="muted small">${escapeHtml(order.event.address)}</span>` : ""}</dd>
               <dt>Titular</dt><dd>${escapeHtml(order.buyerName)}</dd>
             </dl>
           </div>

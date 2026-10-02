@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
+import { mapLinks } from "../maps.js";
 import { sendMail } from "./transport.js";
 import * as templates from "./templates.js";
 
@@ -12,7 +13,7 @@ export async function sendOrderConfirmation(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      event: { select: { name: true, venue: true, startsAt: true } },
+      event: { select: { name: true, venue: true, address: true, startsAt: true } },
       tickets: { include: { ticketType: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
     },
   });
@@ -33,6 +34,7 @@ export async function sendOrderConfirmation(orderId: string) {
     feeCents: order.feeCents,
     orderUrl: orderUrl(order),
     event: order.event,
+    directionsUrl: mapLinks(order.event.address)?.directionsUrl ?? null,
     tickets,
   });
   await sendMail({ to: order.buyerEmail, ...message, attachments });

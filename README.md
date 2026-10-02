@@ -85,6 +85,7 @@ Para mandarlos de verdad, seguí [MAILS.md](MAILS.md) (Gmail para probar, Resend
 | `ORDER_TTL_MINUTES`   | `15`                           | Minutos para pagar antes de que la orden venza                |
 | `SIMULATED_PAYMENTS`  | `true` en desarrollo, `false` en producción | Permite confirmar compras sin cobrar             |
 | `MP_CLIENT_ID` / `MP_CLIENT_SECRET` | —                | Aplicación de Mercado Pago de ecko (ver [MERCADOPAGO.md](MERCADOPAGO.md)) |
+| `GOOGLE_MAPS_EMBED_KEY` | —                            | Opcional: clave de la Maps Embed API de Google (gratis). Sin clave se usa el mapa embebido simple |
 | `SERVICE_FEE_PERCENT` | `10`                           | Cargo por servicio que paga el comprador (% de las entradas)   |
 | `TRUST_PROXY`         | `0`                            | Cantidad de proxies delante del servidor (para leer la IP real) |
 | `UPLOAD_DIR`          | `uploads`                      | Carpeta de los flyers. En producción, un disco persistente     |

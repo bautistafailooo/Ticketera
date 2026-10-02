@@ -25,6 +25,7 @@ adminRouter.get("/events", async (_req, res) => {
       description: true,
       imageFile: true,
       venue: true,
+      address: true,
       startsAt: true,
       status: true,
       reviewNote: true,

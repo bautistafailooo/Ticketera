@@ -31,7 +31,7 @@ function renderPending(events) {
       <div>
         <div class="when" style="color: var(--accent); font-weight: 700">${escapeHtml(formatDate(e.startsAt))} h</div>
         <h3 style="margin: 4px 0">${escapeHtml(e.name)}</h3>
-        <div class="muted">${escapeHtml(e.venue)}</div>
+        <div class="muted">${escapeHtml(e.venue)}${e.address ? ` · ${escapeHtml(e.address)}` : ""}</div>
         ${e.description ? `<p style="margin-top: 12px; white-space: pre-line">${escapeHtml(e.description)}</p>` : ""}
         <p class="small" style="margin-top: 12px">Organizador: ${organizerLabel(e.organizer)}</p>
         <ul>
