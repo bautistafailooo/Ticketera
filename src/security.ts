@@ -66,6 +66,10 @@ export const rateLimits = {
   resendTickets: limiter(60, 3, "Ya te reenviamos las entradas varias veces. Probá más tarde.", (req) =>
     `resend:${String(req.params?.id ?? "")}`,
   ),
+  // Cortesías: mandan mails a cualquier dirección, así que se limitan por organizador.
+  courtesies: limiter(60, 30, "Mandaste muchas cortesías seguidas. Probá en un rato.", (req) =>
+    `courtesy:${(req.res?.locals.user as { id?: string } | undefined)?.id ?? ipKeyGenerator(req.ip ?? "")}`,
+  ),
   // Validaciones de puerta por link: una puerta con mucho movimiento hace ~1 por segundo.
   door: limiter(1, 120, TOO_MANY, (req) => `door:${req.header("x-door-token") ?? ipKeyGenerator(req.ip ?? "")}`),
 };

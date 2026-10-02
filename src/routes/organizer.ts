@@ -7,10 +7,12 @@ import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
 import { canEdit, isTrusted, visibility } from "../events.js";
 import { MAX_IMAGE_BYTES, deleteImage, detectImageType, saveImage } from "../images.js";
-import { notifyAdminsPendingReview } from "../mail/messages.js";
+import { notifyAdminsPendingReview, sendOrderConfirmation } from "../mail/messages.js";
 import { sendInBackground } from "../mail/transport.js";
 import { withLots } from "../lots.js";
 import { expireOrders } from "../orders.js";
+import { rateLimits } from "../security.js";
+import { generateTicketCode } from "../ticket-code.js";
 import { authorizationUrl, connectAccount, disconnectAccount, oauthRedirectUri } from "../payments/mercadopago.js";
 
 // Rutas del panel del organizador: requieren sesión y solo acceden a sus eventos.
@@ -54,14 +56,19 @@ async function findOwnEvent(eventId: string, organizerId: string) {
   return event;
 }
 
-// Entradas pagas, recaudación y entradas validadas por tipo de entrada.
+// Entradas pagas, cortesías, recaudación y entradas validadas por tipo de entrada.
 async function ticketStats(ticketTypeIds: string[]) {
-  const [paid, checkedIn] = await Promise.all([
+  const [paid, courtesy, checkedIn] = await Promise.all([
     prisma.ticket.groupBy({
       by: ["ticketTypeId"],
-      where: { ticketTypeId: { in: ticketTypeIds }, order: { status: "PAID" } },
+      where: { ticketTypeId: { in: ticketTypeIds }, order: { status: "PAID", complimentary: false } },
       _count: true,
       _sum: { priceCents: true },
+    }),
+    prisma.ticket.groupBy({
+      by: ["ticketTypeId"],
+      where: { ticketTypeId: { in: ticketTypeIds }, order: { status: "PAID", complimentary: true } },
+      _count: true,
     }),
     prisma.ticket.groupBy({
       by: ["ticketTypeId"],
@@ -71,6 +78,7 @@ async function ticketStats(ticketTypeIds: string[]) {
   ]);
   return {
     paid: new Map(paid.map((r) => [r.ticketTypeId, { count: r._count, revenueCents: r._sum.priceCents ?? 0 }])),
+    courtesy: new Map(courtesy.map((r) => [r.ticketTypeId, r._count])),
     checkedIn: new Map(checkedIn.map((r) => [r.ticketTypeId, r._count])),
   };
 }
@@ -91,17 +99,19 @@ function withStats(ticketTypes: TicketTypeRow[], stats: Awaited<ReturnType<typeo
     return {
       ...t,
       paid: paid?.count ?? 0,
+      courtesy: stats.courtesy.get(t.id) ?? 0,
       checkedIn: stats.checkedIn.get(t.id) ?? 0,
       // Se suma el precio de cada entrada al momento de la compra.
       revenueCents: paid?.revenueCents ?? 0,
     };
   });
-  const sum = (key: "capacity" | "sold" | "paid" | "checkedIn" | "revenueCents") =>
+  const sum = (key: "capacity" | "sold" | "paid" | "courtesy" | "checkedIn" | "revenueCents") =>
     rows.reduce((total, t) => total + t[key], 0);
   const totals = {
     capacity: sum("capacity"),
     sold: sum("sold"),
     paid: sum("paid"),
+    courtesy: sum("courtesy"),
     checkedIn: sum("checkedIn"),
     revenueCents: sum("revenueCents"),
   };
@@ -148,6 +158,7 @@ organizerRouter.get("/events/:id", async (req, res) => {
       buyerEmail: true,
       status: true,
       totalCents: true,
+      complimentary: true,
       createdAt: true,
       _count: { select: { tickets: true } },
     },
@@ -343,4 +354,53 @@ organizerRouter.get("/mercadopago/callback", async (req, res) => {
 organizerRouter.post("/mercadopago/disconnect", async (_req, res) => {
   await disconnectAccount(userOf(res).id);
   res.json({ ok: true });
+});
+
+// --- Cortesías ---
+// Entradas gratis para invitados: ocupan lugar como cualquier entrada y le llegan por mail al invitado.
+
+const courtesySchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  email: z.email().max(200),
+  ticketTypeId: z.string().min(1).max(50),
+  quantity: z.number().int().min(1).max(10),
+});
+
+organizerRouter.post("/events/:id/cortesias", rateLimits.courtesies, async (req, res) => {
+  const data = courtesySchema.parse(req.body);
+  const user = userOf(res);
+  const event = await findOwnEvent(String(req.params.id), user.id);
+  if (user.suspendedAt) throw new HttpError(403, "Tu cuenta está suspendida");
+  if (!user.emailVerifiedAt) throw new HttpError(403, "Confirmá tu email para poder mandar cortesías");
+  if (event.status === "CANCELLED" || !inTheFuture(event.startsAt)) {
+    throw new HttpError(409, "No se pueden mandar cortesías para este evento");
+  }
+  const type = event.ticketTypes.find((t) => t.id === data.ticketTypeId);
+  if (!type) throw new HttpError(400, "Elegí un tipo de entrada de este evento");
+
+  const order = await prisma.$transaction(async (tx) => {
+    // Ocupan lugar: misma reserva atómica que una compra (sin importar el lote ni el precio).
+    const reserved = await tx.ticketType.updateMany({
+      where: { id: type.id, sold: { lte: type.capacity - data.quantity } },
+      data: { sold: { increment: data.quantity } },
+    });
+    if (reserved.count === 0) throw new HttpError(409, `No quedan suficientes lugares en "${type.name}"`);
+    return tx.order.create({
+      data: {
+        eventId: event.id,
+        accessToken: randomBytes(24).toString("base64url"),
+        buyerName: data.name,
+        buyerEmail: data.email,
+        status: "PAID",
+        complimentary: true,
+        totalCents: 0,
+        paidAt: new Date(),
+        tickets: {
+          create: Array.from({ length: data.quantity }, () => ({ ticketTypeId: type.id, code: generateTicketCode(), priceCents: 0 })),
+        },
+      },
+    });
+  });
+  sendInBackground("cortesía", () => sendOrderConfirmation(order.id));
+  res.status(201).json({ id: order.id, quantity: data.quantity, email: data.email });
 });

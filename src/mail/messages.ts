@@ -30,6 +30,7 @@ export async function sendOrderConfirmation(orderId: string) {
   );
   const message = templates.orderConfirmed({
     buyerName: order.buyerName,
+    complimentary: order.complimentary,
     totalCents: order.totalCents,
     feeCents: order.feeCents,
     orderUrl: orderUrl(order),

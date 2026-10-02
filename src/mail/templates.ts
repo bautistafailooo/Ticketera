@@ -57,6 +57,7 @@ const muted = (html: string) => p(html, "color:#6b6b80;font-size:14px");
 
 type OrderMail = {
   buyerName: string;
+  complimentary: boolean;
   totalCents: number;
   feeCents: number;
   orderUrl: string;
@@ -87,8 +88,12 @@ export function orderConfirmed(order: OrderMail) {
   const html = layout({
     preheader: `Tus entradas para ${order.event.name}`,
     body: `
-      ${h1("¡Tus entradas están listas!")}
-      ${p(`Hola ${esc(order.buyerName)}, tu compra para <b>${esc(order.event.name)}</b> está confirmada.`)}
+      ${h1(order.complimentary ? "¡Tenés una invitación!" : "¡Tus entradas están listas!")}
+      ${p(
+        order.complimentary
+          ? `Hola ${esc(order.buyerName)}, te invitaron a <b>${esc(order.event.name)}</b>. Estas son tus entradas.`
+          : `Hola ${esc(order.buyerName)}, tu compra para <b>${esc(order.event.name)}</b> está confirmada.`,
+      )}
       ${p(`<b>Cuándo:</b> ${esc(formatDate(order.event.startsAt))}<br><b>Dónde:</b> ${esc(order.event.venue)}${order.event.address ? ` · ${esc(order.event.address)}` : ""}${order.directionsUrl ? ` (<a href="${esc(order.directionsUrl)}" style="color:#b35cff">cómo llegar</a>)` : ""}<br><b>Total:</b> ${esc(formatPrice(order.totalCents))}${order.feeCents > 0 ? ` (incluye ${esc(formatPrice(order.feeCents))} de cargo por servicio)` : ""}`)}
       ${muted("Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código.")}
       ${tickets}
@@ -102,7 +107,7 @@ export function orderConfirmed(order: OrderMail) {
     ...order.tickets.map((t, i) => `Entrada ${i + 1}: ${t.ticketType} — código ${t.code}`),
     `Ver tus entradas: ${order.orderUrl}`,
   ].join("\n");
-  return { subject: `Tus entradas para ${order.event.name}`, html, text };
+  return { subject: `${order.complimentary ? "Tu invitación" : "Tus entradas"} para ${order.event.name}`, html, text };
 }
 
 export function emailVerification({ name, url }: { name: string; url: string }) {

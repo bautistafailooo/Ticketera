@@ -81,6 +81,7 @@ function render(event) {
       <td class="num">${formatPrice(tt.priceCents)}</td>
       <td class="num">${tt.sold} / ${tt.capacity}</td>
       <td class="num">${tt.paid}</td>
+      <td class="num">${tt.courtesy}</td>
       <td class="num">${tt.checkedIn}</td>
       <td class="num">${formatPrice(tt.revenueCents)}</td>
     </tr>`).join("");
@@ -91,7 +92,7 @@ function render(event) {
       <td class="wrap">${escapeHtml(o.buyerName)}<div class="faint small">${escapeHtml(o.buyerEmail)}</div></td>
       <td class="num">${o._count.tickets}</td>
       <td class="num">${formatPrice(o.totalCents)}</td>
-      <td>${ORDER_STATUS[o.status] ?? escapeHtml(o.status)}</td>
+      <td>${o.complimentary ? '<span class="badge">Cortesía</span>' : (ORDER_STATUS[o.status] ?? escapeHtml(o.status))}</td>
     </tr>`).join("");
 
   const doorUrl = event.doorToken ? `${location.origin}/puerta.html#${event.doorToken}` : "";
@@ -118,8 +119,9 @@ function render(event) {
     ${reviewNote}
 
     <div class="stats">
-      <div class="card stat"><div class="value">${t.sold} / ${t.capacity}</div><div class="label">Entradas vendidas</div></div>
+      <div class="card stat"><div class="value">${t.sold} / ${t.capacity}</div><div class="label">${t.courtesy ? "Entradas emitidas" : "Entradas vendidas"}</div></div>
       <div class="card stat"><div class="value">${t.paid}</div><div class="label">Pagas</div></div>
+      ${t.courtesy ? `<div class="card stat"><div class="value">${t.courtesy}</div><div class="label">Cortesías</div></div>` : ""}
       <div class="card stat"><div class="value">${formatPrice(t.revenueCents)}</div><div class="label">Recaudado</div></div>
       <div class="card stat"><div class="value">${t.checkedIn}</div><div class="label">Ingresaron</div></div>
     </div>
@@ -152,7 +154,7 @@ function render(event) {
         <h2>Tipos de entrada</h2>
         ${event.ticketTypes.length
           ? `<div class="table-wrap"><table>
-              <thead><tr><th>Tipo</th><th>Venta</th><th class="num">Precio</th><th class="num">Vendidas</th><th class="num">Pagas</th><th class="num">Ingresaron</th><th class="num">Recaudado</th></tr></thead>
+              <thead><tr><th>Tipo</th><th>Venta</th><th class="num">Precio</th><th class="num">Vendidas</th><th class="num">Pagas</th><th class="num">Cortesías</th><th class="num">Ingresaron</th><th class="num">Recaudado</th></tr></thead>
               <tbody>${ticketRows}</tbody>
             </table></div>`
           : '<p class="muted">Todavía no hay tipos de entrada. Agregá al menos uno para poder publicar.</p>'}
@@ -182,6 +184,24 @@ function render(event) {
           <p id="tt-message" class="error" role="alert" style="margin: 12px 0 0"></p>
         </form>
       </section>
+
+      ${event.ticketTypes.length && event.status !== "CANCELLED" && new Date(event.startsAt) > new Date() ? `
+      <form class="card" id="courtesy">
+        <h2>Cortesías</h2>
+        <p class="muted">Entradas gratis para invitados: le llegan por mail con su QR, como cualquier entrada, y ocupan lugar.</p>
+        <div class="form-row">
+          <div><label for="ct-name">Nombre del invitado</label><input id="ct-name" required maxlength="100"></div>
+          <div><label for="ct-email">Email</label><input id="ct-email" type="email" required maxlength="200"></div>
+        </div>
+        <div class="form-row">
+          <div><label for="ct-type">Tipo de entrada</label>
+            <select id="ct-type">${event.ticketTypes.map((tt) => `<option value="${escapeHtml(tt.id)}">${escapeHtml(tt.name)} (quedan ${Math.max(0, tt.capacity - tt.sold)})</option>`).join("")}</select>
+          </div>
+          <div><label for="ct-quantity">Cantidad</label><input id="ct-quantity" type="number" min="1" max="10" step="1" value="1" required></div>
+        </div>
+        <div class="form-actions"><button type="submit" class="btn btn-secondary" id="ct-submit">Mandar invitación</button></div>
+        <p id="ct-message" role="status" style="margin: 12px 0 0"></p>
+      </form>` : ""}
 
       ${event.editable ? `
       <form class="card" id="edit-event">
@@ -317,6 +337,34 @@ function bind(event) {
       await load();
     } catch (err) {
       message.textContent = err.message;
+    }
+  });
+
+  on("courtesy", "submit", async (e) => {
+    e.preventDefault();
+    const message = document.getElementById("ct-message");
+    const button = document.getElementById("ct-submit");
+    button.disabled = true;
+    message.className = "";
+    message.textContent = "";
+    try {
+      const res = await api(`${eventPath}/cortesias`, {
+        method: "POST",
+        body: JSON.stringify({
+          name: document.getElementById("ct-name").value,
+          email: document.getElementById("ct-email").value,
+          ticketTypeId: document.getElementById("ct-type").value,
+          quantity: Number(document.getElementById("ct-quantity").value),
+        }),
+      });
+      await load();
+      const done = document.getElementById("ct-message");
+      done.className = "success";
+      done.textContent = `Listo: le mandamos ${res.quantity === 1 ? "la entrada" : `${res.quantity} entradas`} a ${res.email}.`;
+    } catch (err) {
+      message.className = "error";
+      message.textContent = err.message;
+      button.disabled = false;
     }
   });
 
