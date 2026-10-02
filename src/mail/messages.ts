@@ -57,6 +57,16 @@ export async function sendPaymentRefunded(orderId: string) {
   });
 }
 
+// Avisa al comprador que su compra se anuló porque el dinero se le devolvió.
+export async function sendOrderRefunded(orderId: string) {
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { event: { select: { name: true } } } });
+  if (!order) return;
+  await sendMail({
+    to: order.buyerEmail,
+    ...templates.orderRefunded({ buyerName: order.buyerName, eventName: order.event.name, totalCents: order.totalCents }),
+  });
+}
+
 export async function sendEmailVerification(user: { email: string; name: string }, token: string) {
   const url = `${config.publicUrl}/verificar.html#${encodeURIComponent(token)}`;
   await sendMail({ to: user.email, ...templates.emailVerification({ name: user.name, url }) });

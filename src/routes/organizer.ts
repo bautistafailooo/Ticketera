@@ -159,6 +159,7 @@ organizerRouter.get("/events/:id", async (req, res) => {
       status: true,
       totalCents: true,
       complimentary: true,
+      refundedAt: true,
       createdAt: true,
       _count: { select: { tickets: true } },
     },

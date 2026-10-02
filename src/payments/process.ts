@@ -1,5 +1,5 @@
 import { prisma } from "../db.js";
-import { sendOrderConfirmation, sendPaymentRefunded } from "../mail/messages.js";
+import { sendOrderConfirmation, sendOrderRefunded, sendPaymentRefunded } from "../mail/messages.js";
 import { sendInBackground } from "../mail/transport.js";
 import { getPayment, MercadoPagoError, refundPayment, searchPayments, sellerToken, type Payment } from "./mercadopago.js";
 
@@ -38,6 +38,8 @@ async function refund(token: string, orderId: string, paymentId: string, reason:
 export async function applyPayment(orderId: string, payment: Payment, token: string): Promise<Outcome> {
   const paymentId = String(payment.id);
   if (payment.external_reference !== orderId) return "ignored";
+  // Devuelto desde Mercado Pago (por el organizador) o contracargo: la compra se anula.
+  if (payment.status === "refunded" || payment.status === "charged_back") return voidOrder(orderId, paymentId, payment.status);
   if (payment.status !== "approved") {
     const detail = (payment as { status_detail?: string }).status_detail;
     console.log(`Pago ${paymentId} de la orden ${orderId}: ${payment.status}${detail ? ` (${detail})` : ""}.`);
@@ -100,6 +102,28 @@ export async function applyPayment(orderId: string, payment: Payment, token: str
     await prisma.order.update({ where: { id: orderId }, data: { refundedAt: new Date() } });
     sendInBackground("pago devuelto", () => sendPaymentRefunded(orderId));
   }
+  return "refunded";
+}
+
+// El pago de una compra confirmada se devolvió (desde la cuenta de Mercado Pago del organizador)
+// o tuvo un contracargo: la compra queda anulada, sus entradas dejan de valer en la puerta, los
+// lugares que no se usaron vuelven a estar a la venta y se le avisa al comprador.
+async function voidOrder(orderId: string, paymentId: string, status: string): Promise<Outcome> {
+  const voided = await prisma.$transaction(async (tx) => {
+    const changed = await tx.order.updateMany({
+      where: { id: orderId, status: "PAID", mpPaymentId: paymentId },
+      data: { status: "CANCELLED", refundedAt: new Date() },
+    });
+    if (changed.count === 0) return false;
+    const perType = await tx.ticket.groupBy({ by: ["ticketTypeId"], where: { orderId, usedAt: null }, _count: true });
+    for (const { ticketTypeId, _count } of perType) {
+      await tx.ticketType.update({ where: { id: ticketTypeId }, data: { sold: { decrement: _count } } });
+    }
+    return true;
+  });
+  if (!voided) return "ignored";
+  console.log(`Orden ${orderId} anulada: el pago ${paymentId} quedó ${status === "refunded" ? "devuelto" : "con contracargo"}.`);
+  sendInBackground("compra anulada", () => sendOrderRefunded(orderId));
   return "refunded";
 }
 

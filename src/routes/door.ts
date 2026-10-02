@@ -53,7 +53,7 @@ doorRouter.post("/check-in", async (req, res) => {
     throw new HttpError(409, "Esta entrada es de otro evento");
   }
   if (ticket.order.status !== "PAID") {
-    throw new HttpError(409, "La entrada no está paga");
+    throw new HttpError(409, ticket.order.refundedAt ? "Entrada anulada: la compra se devolvió" : "La entrada no está paga");
   }
 
   const checkedIn = await prisma.ticket.updateMany({

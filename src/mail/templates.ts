@@ -220,3 +220,19 @@ export function revocationForAdmins(r: { code: string; name: string; email: stri
     text: `Nuevo pedido de arrepentimiento ${r.code} de ${r.name} <${r.email}>. Ver: ${r.url}`,
   };
 }
+
+// La compra se anuló porque el organizador devolvió el pago desde Mercado Pago.
+export function orderRefunded({ buyerName, eventName, totalCents }: { buyerName: string; eventName: string; totalCents: number }) {
+  const html = layout({
+    preheader: `Te devolvimos el dinero de tu compra para ${eventName}`,
+    body: `
+      ${h1("Te devolvimos el dinero")}
+      ${p(`Hola ${esc(buyerName)}, se te devolvió el pago de <b>${esc(formatPrice(totalCents))}</b> de tu compra para <b>${esc(eventName)}</b>, y las entradas de esa compra quedaron anuladas.`)}
+      ${muted("La devolución se hace por Mercado Pago, al mismo medio con el que pagaste. Según el medio, puede tardar unos días en verse en tu cuenta o en el resumen de tu tarjeta.")}`,
+  });
+  return {
+    subject: `Te devolvimos el dinero de ${eventName}`,
+    html,
+    text: `Hola ${buyerName}, se te devolvió el pago de ${formatPrice(totalCents)} de tu compra para ${eventName}. Las entradas de esa compra quedaron anuladas.`,
+  };
+}

@@ -344,3 +344,55 @@ describe("MP_OMITIR (diagnóstico)", () => {
     }
   });
 });
+
+describe("devoluciones hechas desde Mercado Pago", () => {
+  it("si el organizador devuelve el pago, la compra se anula, la puerta la rechaza y se libera el lugar", async () => {
+    const { agent, eventId, ticketTypeId } = await sellingEvent({ capacity: 5 });
+    const order = (await buy(ticketTypeId, 2)).body;
+    const payment = approvedPayment(order.id, order.totalCents);
+    await notify(order.id, payment.id);
+    const [ticket] = (await getOrder(order)).body.tickets;
+    expect((await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId } })).sold).toBe(2);
+    sentMails.length = 0;
+
+    // El organizador devuelve el pago desde su Mercado Pago: llega la notificación del cambio.
+    fake.payments.set(payment.id, { ...payment, status: "refunded" });
+    expect((await notify(order.id, payment.id)).status).toBe(200);
+
+    const after = (await getOrder(order)).body;
+    expect(after).toMatchObject({ status: "CANCELLED", refunded: true });
+    expect((await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId } })).sold).toBe(0);
+    await waitForMail("Te devolvimos el dinero de Fiesta");
+
+    const token = (await agent.post(`/organizer/events/${eventId}/door-token`)).body.doorToken;
+    const door = await request(app).post("/door/check-in").set("x-door-token", token).send({ code: ticket.code });
+    expect(door.status).toBe(409);
+    expect(door.body.error).toBe("Entrada anulada: la compra se devolvió");
+
+    // La notificación repetida no hace nada más.
+    await notify(order.id, payment.id);
+    expect(sentMails.filter((m) => m.subject.startsWith("Te devolvimos el dinero de Fiesta"))).toHaveLength(1);
+    expect((await prisma.ticketType.findUniqueOrThrow({ where: { id: ticketTypeId } })).sold).toBe(0);
+  });
+
+  it("un contracargo también anula la compra", async () => {
+    const { ticketTypeId } = await sellingEvent();
+    const order = (await buy(ticketTypeId, 1)).body;
+    const payment = approvedPayment(order.id, order.totalCents);
+    await notify(order.id, payment.id);
+    fake.payments.set(payment.id, { ...payment, status: "charged_back" });
+    await notify(order.id, payment.id);
+    expect((await getOrder(order)).body.status).toBe("CANCELLED");
+  });
+
+  it("un pago devuelto que no es el de la compra confirmada no la toca", async () => {
+    const { ticketTypeId } = await sellingEvent();
+    const order = (await buy(ticketTypeId, 1)).body;
+    approvedPayment(order.id, order.totalCents, 1);
+    await notify(order.id, 1);
+    // Otro pago de la misma orden (por ejemplo, el duplicado que ecko devolvió) aparece como devuelto.
+    fake.payments.set(2, { id: 2, status: "refunded", external_reference: order.id, transaction_amount: order.totalCents / 100, currency_id: "ARS" });
+    await notify(order.id, 2);
+    expect((await getOrder(order)).body.status).toBe("PAID");
+  });
+});

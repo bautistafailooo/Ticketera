@@ -92,7 +92,7 @@ function render(event) {
       <td class="wrap">${escapeHtml(o.buyerName)}<div class="faint small">${escapeHtml(o.buyerEmail)}</div></td>
       <td class="num">${o._count.tickets}</td>
       <td class="num">${formatPrice(o.totalCents)}</td>
-      <td>${o.complimentary ? '<span class="badge">Cortesía</span>' : (ORDER_STATUS[o.status] ?? escapeHtml(o.status))}</td>
+      <td>${o.complimentary ? '<span class="badge">Cortesía</span>' : o.refundedAt ? '<span class="badge danger">Devuelta</span>' : (ORDER_STATUS[o.status] ?? escapeHtml(o.status))}</td>
     </tr>`).join("");
 
   const doorUrl = event.doorToken ? `${location.origin}/puerta.html#${event.doorToken}` : "";

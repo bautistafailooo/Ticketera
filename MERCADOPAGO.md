@@ -19,6 +19,7 @@ Otras reglas:
 - Solo se aceptan pagos que se aprueban en el momento (no efectivo en Rapipago/Pago Fácil, que tarda días y la reserva dura 15 minutos).
 - Si un pago se aprueba después de que venció la reserva: si todavía hay lugar, la compra se confirma igual. Si no, **se devuelve el pago solo** y se le avisa al comprador por mail.
 - Si alguien paga dos veces la misma compra, el segundo pago se devuelve solo.
+- **Devoluciones puntuales:** el organizador devuelve el pago desde su Mercado Pago (Actividad → el pago → Devolver dinero). Mercado Pago le avisa a ecko, que anula esa compra: las entradas dejan de valer en la puerta, el lugar vuelve a estar a la venta y el comprador recibe un mail. La comisión de ecko se devuelve sola. Lo mismo pasa con un contracargo.
 - Sin cuenta conectada, un organizador no puede publicar eventos con entradas pagas (los gratis sí).
 - El porcentaje se cambia con `SERVICE_FEE_PERCENT` en el `.env` (afecta solo a las compras nuevas).
 

@@ -210,13 +210,15 @@ function renderPaid(order) {
 }
 
 function renderClosed(order) {
-  const reason = order.refunded
+  const reason = order.refunded && order.status === "CANCELLED"
+    ? "Te devolvimos el dinero de esta compra por Mercado Pago y las entradas quedaron anuladas."
+    : order.refunded
     ? "Tu pago llegó después de que venciera la reserva y ya no quedaban entradas, así que te lo devolvimos completo por Mercado Pago."
     : order.status === "EXPIRED"
       ? "La reserva venció porque no se pagó a tiempo, y las entradas se liberaron."
       : "Esta compra fue cancelada.";
   content.innerHTML = `
-    ${header(order, `<span class="badge danger">${order.status === "EXPIRED" ? "Reserva vencida" : "Cancelada"}</span>`)}
+    ${header(order, `<span class="badge danger">${order.status === "EXPIRED" ? "Reserva vencida" : order.refunded ? "Devuelta" : "Cancelada"}</span>`)}
     <div class="empty">
       <p>${reason}</p>
       <a class="btn btn-gradient" href="/evento.html?id=${encodeURIComponent(order.event.id)}">Volver a comprar</a>
