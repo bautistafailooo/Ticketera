@@ -304,3 +304,18 @@ describe("cifrado de los tokens", () => {
     expect(decrypt("basura", "secreto")).toBeNull();
   });
 });
+
+describe("checkout sin email del comprador", () => {
+  it("no manda el email del formulario a Mercado Pago (bloquea el pago si no coincide con la cuenta)", async () => {
+    const agent = await organizer();
+    const start = await agent.get("/organizer/mercadopago/connect");
+    const state = new URL(start.headers.location).searchParams.get("state");
+    await agent.get(`/organizer/mercadopago/callback?code=codigo-ok&state=${state}`);
+    const event = await agent.post("/organizer/events").send({ name: "Fiesta", venue: "Club", startsAt: inDays(10) });
+    const type = await agent.post(`/organizer/events/${event.body.id}/ticket-types`).send({ name: "General", priceCents: 100000, capacity: 5 });
+    await agent.post(`/organizer/events/${event.body.id}/publish`);
+    const order = (await buy(type.body.id, 1)).body;
+    await request(app).post(`/orders/${order.id}/checkout`).set("x-order-token", order.accessToken);
+    expect(fake.preferences[0].body.payer).toBeUndefined();
+  });
+});

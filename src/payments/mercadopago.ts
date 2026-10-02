@@ -127,7 +127,6 @@ type PreferenceInput = {
   orderId: string;
   items: { title: string; quantity: number; unitPriceCents: number }[];
   feeCents: number;
-  buyerEmail: string;
   expiresAt: Date;
   returnUrl: string;
   notificationUrl: string;
@@ -145,7 +144,9 @@ export async function createPreference(token: string, input: PreferenceInput) {
         unit_price: i.unitPriceCents / 100,
         currency_id: "ARS",
       })),
-      payer: { email: input.buyerEmail },
+      // Sin "payer": Mercado Pago le pide el email al comprador en su pantalla. Si se manda
+      // un email que no es el de la cuenta con la que se paga, puede bloquear el pago
+      // (con las cuentas de prueba, el botón "Pagar" queda deshabilitado).
       external_reference: input.orderId,
       marketplace_fee: input.feeCents / 100,
       // Las entradas están reservadas por pocos minutos: solo pagos que se aprueban o rechazan

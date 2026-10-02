@@ -222,7 +222,6 @@ ordersRouter.post("/:id/checkout", rateLimits.orders, async (req, res) => {
     orderId: full.id,
     items,
     feeCents: full.feeCents,
-    buyerEmail: full.buyerEmail,
     expiresAt: full.expiresAt!,
     returnUrl: `${config.publicUrl}/orden.html?volver=${encodeURIComponent(full.id)}`,
     notificationUrl: `${config.publicUrl}/payments/mercadopago/webhook?order=${encodeURIComponent(full.id)}`,
