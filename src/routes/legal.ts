@@ -43,7 +43,7 @@ async function findOrder(reference: string | undefined, email: string) {
   return order;
 }
 
-legalRouter.post("/arrepentimiento", rateLimits.forgotPassword, async (req, res) => {
+legalRouter.post("/arrepentimiento", rateLimits.revocation, rateLimits.revocationPerEmail, async (req, res) => {
   const data = schema.parse(req.body);
   const order = await findOrder(data.reference, data.email);
   const request = await prisma.revocationRequest.create({

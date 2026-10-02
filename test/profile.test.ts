@@ -53,3 +53,11 @@ describe("perfil del organizador", () => {
     expect(html).toContain('<meta property="og:description" content="Las mejores fiestas">');
   });
 });
+
+describe("perfil: Instagram sin https", () => {
+  it("acepta el link sin protocolo", async () => {
+    const { agent } = await createPublishedEvent();
+    const res = await agent.patch("/organizer/profile").send({ instagram: "instagram.com/la.productora/" });
+    expect(res.body.instagram).toBe("la.productora");
+  });
+});

@@ -56,3 +56,14 @@ describe("cortesías", () => {
     expect(res.status).toBe(403);
   });
 });
+
+describe("cortesías según el estado del evento", () => {
+  it("no se mandan para un evento pausado o en revisión", async () => {
+    const { agent, eventId, ticketTypeId } = await createPublishedEvent(5);
+    for (const status of ["PAUSED", "PENDING_REVIEW"] as const) {
+      await prisma.event.update({ where: { id: eventId }, data: { status } });
+      const res = await send(agent, eventId, { name: "A", email: "a@example.com", ticketTypeId, quantity: 1 });
+      expect(res.status).toBe(409);
+    }
+  });
+});

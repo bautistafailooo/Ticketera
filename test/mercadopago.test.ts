@@ -396,3 +396,21 @@ describe("devoluciones hechas desde Mercado Pago", () => {
     expect((await getOrder(order)).body.status).toBe("PAID");
   });
 });
+
+describe("entradas pagas en un evento ya publicado", () => {
+  it("sin Mercado Pago conectado no se puede sumar ni pasar a paga una entrada", async () => {
+    const agent = await organizer();
+    const event = await agent.post("/organizer/events").send({ name: "Gratis", venue: "Club", startsAt: inDays(10) });
+    const free = await agent.post(`/organizer/events/${event.body.id}/ticket-types`).send({ name: "Libre", priceCents: 0, capacity: 5 });
+    expect((await agent.post(`/organizer/events/${event.body.id}/publish`)).status).toBe(200);
+
+    const added = await agent.post(`/organizer/events/${event.body.id}/ticket-types`).send({ name: "VIP", priceCents: 500000, capacity: 5 });
+    expect(added.status).toBe(409);
+    expect(added.body.error).toMatch(/Mercado Pago/);
+    const edited = await agent.patch(`/organizer/events/${event.body.id}/ticket-types/${free.body.id}`).send({ priceCents: 100000 });
+    expect(edited.status).toBe(409);
+
+    await connect(agent);
+    expect((await agent.post(`/organizer/events/${event.body.id}/ticket-types`).send({ name: "VIP", priceCents: 500000, capacity: 5 })).status).toBe(201);
+  });
+});

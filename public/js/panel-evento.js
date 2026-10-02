@@ -193,7 +193,7 @@ function render(event) {
         </form>
       </section>
 
-      ${event.ticketTypes.length && event.status !== "CANCELLED" && new Date(event.startsAt) > new Date() ? `
+      ${event.ticketTypes.length && (event.status === "DRAFT" || event.status === "PUBLISHED") && new Date(event.startsAt) > new Date() ? `
       <form class="card" id="courtesy">
         <h2>Cortesías</h2>
         <p class="muted">Entradas gratis para invitados: le llegan por mail con su QR, como cualquier entrada, y ocupan lugar.</p>

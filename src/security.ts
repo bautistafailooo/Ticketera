@@ -55,12 +55,29 @@ export const rateLimits = {
   loginPerAccount: limiter(15, 10, TOO_MANY, (req) =>
     `login:${String(req.body?.email ?? "").trim().toLowerCase()}`,
   ),
-  // Compras por IP: evita que alguien bloquee el cupo creando órdenes sin parar.
-  orders: limiter(10, 20, "Hiciste demasiadas compras seguidas. Esperá unos minutos."),
+  // Compras por IP: evita que alguien bloquee el cupo creando órdenes sin parar. Es generoso porque
+  // muchos celulares comparten la misma IP (redes de las compañías, el wifi de un lugar).
+  orders: limiter(10, 60, "Hiciste demasiadas compras seguidas. Esperá unos minutos."),
+  // Ir a pagar y consultar el pago al volver de Mercado Pago (se consulta varias veces por compra).
+  paymentChecks: limiter(10, 300, TOO_MANY),
+  // Notificaciones de Mercado Pago: llegan desde pocas IPs, muchas juntas en una venta grande.
+  webhooks: limiter(1, 3000, TOO_MANY),
   // "Olvidé mi contraseña": por IP y por email, para no usarlo para mandar spam.
   forgotPassword: limiter(15, 5, TOO_MANY),
   forgotPasswordPerEmail: limiter(60, 3, TOO_MANY, (req) =>
     `forgot:${String(req.body?.email ?? "").trim().toLowerCase()}`,
+  ),
+  // Cada uno con su propio contador (si comparten, uno agota al otro).
+  resetPassword: limiter(15, 20, TOO_MANY),
+  verifyEmail: limiter(15, 30, TOO_MANY),
+  // Reenviar el mail de confirmación: por cuenta.
+  resendVerification: limiter(60, 5, "Ya te mandamos el mail varias veces. Revisá el spam o probá más tarde.", (req) =>
+    `verify:${(req.res?.locals.user as { id?: string } | undefined)?.id ?? ipKeyGenerator(req.ip ?? "")}`,
+  ),
+  // Botón de arrepentimiento: manda un mail al email que se escribe, así que se limita por IP y por email.
+  revocation: limiter(60, 10, TOO_MANY),
+  revocationPerEmail: limiter(60, 3, "Ya recibimos pedidos con ese email. Te vamos a responder ahí.", (req) =>
+    `revocation:${String(req.body?.email ?? "").trim().toLowerCase()}`,
   ),
   // Reenvío de entradas por mail: pocas veces por orden.
   resendTickets: limiter(60, 3, "Ya te reenviamos las entradas varias veces. Probá más tarde.", (req) =>

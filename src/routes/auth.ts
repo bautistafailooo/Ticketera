@@ -101,7 +101,7 @@ authRouter.post("/forgot", rateLimits.forgotPassword, rateLimits.forgotPasswordP
   res.json({ ok: true });
 });
 
-authRouter.post("/reset", rateLimits.forgotPassword, async (req, res) => {
+authRouter.post("/reset", rateLimits.resetPassword, async (req, res) => {
   const { token, password } = resetSchema.parse(req.body);
   const reset = await prisma.passwordReset.findUnique({ where: { tokenHash: hashToken(token) } });
   if (!reset || reset.usedAt || reset.expiresAt < new Date()) {
@@ -138,7 +138,7 @@ async function sendVerification(user: { id: string; email: string; name: string 
 }
 
 // No pide sesión: el link se puede abrir desde el celular aunque la cuenta se haya creado en la compu.
-authRouter.post("/verify-email", rateLimits.forgotPassword, async (req, res) => {
+authRouter.post("/verify-email", rateLimits.verifyEmail, async (req, res) => {
   const { token } = z.object({ token: z.string().min(20).max(200) }).parse(req.body);
   const verification = await prisma.emailVerification.findUnique({ where: { tokenHash: hashToken(token) } });
   if (!verification || verification.expiresAt < new Date()) {
@@ -155,7 +155,7 @@ authRouter.post("/verify-email", rateLimits.forgotPassword, async (req, res) => 
   res.json({ ok: true, email: user.email });
 });
 
-authRouter.post("/resend-verification", requireUser, rateLimits.forgotPassword, async (_req, res) => {
+authRouter.post("/resend-verification", requireUser, rateLimits.resendVerification, async (_req, res) => {
   const user = userOf(res);
   if (user.emailVerifiedAt) throw new HttpError(409, "Tu email ya está confirmado");
   await sendVerification(user);

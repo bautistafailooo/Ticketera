@@ -52,7 +52,8 @@ export function createApp() {
   app.use("/door", api, doorRouter);
   app.use("/events", api, eventsRouter);
   app.use("/orders", api, ordersRouter);
-  app.use("/payments", api, paymentsRouter);
+  // Las notificaciones de Mercado Pago tienen su propio límite (llegan muchas desde pocas IPs).
+  app.use("/payments", rateLimits.webhooks, noStore, paymentsRouter);
   app.use("/legal", api, legalRouter);
   app.use("/organizers", api, organizersRouter);
   app.use("/tickets", rateLimits.api, ticketsRouter);

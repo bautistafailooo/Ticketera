@@ -48,6 +48,18 @@ const createTicketTypeSchema = z.object({
   opensAfterId: z.string().min(1).max(50).optional(),
 });
 
+// Para cobrar entradas hace falta Mercado Pago conectado (salvo con el pago simulado).
+const canChargeFor = (user: { mpAccessToken: string | null }) =>
+  config.simulatedPayments || Boolean(config.mercadoPago && user.mpAccessToken);
+const NEEDS_MERCADO_PAGO = "Para vender entradas pagas, conectá tu cuenta de Mercado Pago desde el panel";
+
+// En un evento ya publicado (o en revisión) no se puede sumar una entrada paga sin poder cobrarla.
+function assertCanSellPaid(event: { status: string }, user: { mpAccessToken: string | null }, priceCents: number | undefined) {
+  if (priceCents && priceCents > 0 && event.status !== "DRAFT" && event.status !== "REJECTED" && !canChargeFor(user)) {
+    throw new HttpError(409, NEEDS_MERCADO_PAGO);
+  }
+}
+
 async function findOwnEvent(eventId: string, organizerId: string) {
   const event = await prisma.event.findUnique({
     where: { id: eventId, organizerId },
@@ -211,6 +223,7 @@ organizerRouter.post("/events/:id/ticket-types", async (req, res) => {
   if (data.opensAfterId && !event.ticketTypes.some((t) => t.id === data.opensAfterId)) {
     throw new HttpError(400, "El lote anterior tiene que ser un tipo de entrada de este evento");
   }
+  assertCanSellPaid(event, user, data.priceCents);
   if (data.salesEndAt && data.salesEndAt > event.startsAt) {
     throw new HttpError(400, "La venta de un lote no puede terminar después del evento");
   }
@@ -243,6 +256,7 @@ organizerRouter.patch("/events/:id/ticket-types/:typeId", async (req, res) => {
   const data = updateTicketTypeSchema.parse(req.body);
   const user = userOf(res);
   const { event, type } = await findOwnTicketType(req, user);
+  assertCanSellPaid(event, user, data.priceCents);
 
   if (data.name && event.ticketTypes.some((t) => t.id !== type.id && t.name.toLowerCase() === data.name!.toLowerCase())) {
     throw new HttpError(409, "Ya existe un tipo de entrada con ese nombre");
@@ -346,9 +360,7 @@ organizerRouter.post("/events/:id/publish", async (req, res) => {
   }
   if (!inTheFuture(event.startsAt)) throw new HttpError(409, "La fecha del evento ya pasó");
   const paid = event.ticketTypes.some((t) => t.priceCents > 0);
-  if (paid && !config.simulatedPayments && !(config.mercadoPago && user.mpAccessToken)) {
-    throw new HttpError(409, "Para vender entradas pagas, conectá tu cuenta de Mercado Pago desde el panel");
-  }
+  if (paid && !canChargeFor(user)) throw new HttpError(409, NEEDS_MERCADO_PAGO);
 
   const status = isTrusted(user) ? "PUBLISHED" : "PENDING_REVIEW";
   const updated = await prisma.event.updateMany({
@@ -451,7 +463,8 @@ organizerRouter.post("/events/:id/cortesias", rateLimits.courtesies, async (req,
   const event = await findOwnEvent(String(req.params.id), user.id);
   if (user.suspendedAt) throw new HttpError(403, "Tu cuenta está suspendida");
   if (!user.emailVerifiedAt) throw new HttpError(403, "Confirmá tu email para poder mandar cortesías");
-  if (event.status === "CANCELLED" || !inTheFuture(event.startsAt)) {
+  // Solo en borrador o publicado: no para un evento en revisión, rechazado, pausado o cancelado.
+  if ((event.status !== "DRAFT" && event.status !== "PUBLISHED") || !inTheFuture(event.startsAt)) {
     throw new HttpError(409, "No se pueden mandar cortesías para este evento");
   }
   const type = event.ticketTypes.find((t) => t.id === data.ticketTypeId);
@@ -491,7 +504,7 @@ const instagramSchema = z
   .string()
   .trim()
   .max(200)
-  .transform((value) => value.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, ""))
+  .transform((value) => value.replace(/^(https?:\/\/)?(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, ""))
   .refine((value) => value === "" || /^[A-Za-z0-9._]{1,30}$/.test(value), "Usuario de Instagram inválido");
 
 // Sitio web: solo http o https (nada de "javascript:" ni otros esquemas).

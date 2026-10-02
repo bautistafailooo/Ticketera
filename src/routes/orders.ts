@@ -200,7 +200,7 @@ ordersRouter.get("/:id", async (req, res) => {
 
 // Pago con Mercado Pago: crea el checkout con el token del organizador y devuelve el link para pagar.
 // La vuelta (y la notificación de Mercado Pago) llevan solo el id de la orden, no su clave.
-ordersRouter.post("/:id/checkout", rateLimits.orders, async (req, res) => {
+ordersRouter.post("/:id/checkout", rateLimits.paymentChecks, async (req, res) => {
   const order = await findOrderWithToken(req);
   if (order.status !== "PENDING" || !order.expiresAt || order.expiresAt <= new Date()) {
     throw new HttpError(409, order.status === "PAID" ? "La orden ya está paga" : "La reserva venció");
@@ -235,7 +235,7 @@ ordersRouter.post("/:id/checkout", rateLimits.orders, async (req, res) => {
 });
 
 // Al volver de Mercado Pago: consulta el pago y actualiza la orden (por si la notificación no llegó).
-ordersRouter.post("/:id/check-payment", rateLimits.orders, async (req, res) => {
+ordersRouter.post("/:id/check-payment", rateLimits.paymentChecks, async (req, res) => {
   const order = await findOrderWithToken(req);
   const { paymentId } = z.object({ paymentId: z.string().regex(/^\d{1,20}$/).optional() }).parse(req.body ?? {});
   if (order.status !== "PAID" && config.mercadoPago) await syncOrderPayments(order.id, paymentId);

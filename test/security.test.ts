@@ -47,3 +47,20 @@ describe("seguridad", () => {
     expect((await request(app).get("/vendor/jsQR.js")).status).toBe(200);
   });
 });
+
+describe("límites que no frenan a la gente que compra", () => {
+  it("consultar el pago varias veces y confirmar emails no comparten el límite de compras ni de contraseñas", async () => {
+    const { config } = await import("../src/config.js");
+    const previous = config.rateLimits;
+    config.rateLimits = true;
+    try {
+      const statuses = new Set<number>();
+      // Como si muchas personas detrás de la misma IP volvieran de Mercado Pago.
+      for (let i = 0; i < 40; i++) statuses.add((await request(app).post("/orders/no-existe/check-payment").set("x-order-token", "x").send({})).status);
+      for (let i = 0; i < 10; i++) statuses.add((await request(app).post("/auth/verify-email").send({ token: "y".repeat(40) })).status);
+      expect(statuses.has(429)).toBe(false);
+    } finally {
+      config.rateLimits = previous;
+    }
+  });
+});
