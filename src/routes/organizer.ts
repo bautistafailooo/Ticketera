@@ -5,6 +5,7 @@ import { readCookie, requireUser, userOf } from "../auth.js";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
 import { HttpError } from "../errors.js";
+import { Prisma } from "../../generated/prisma/client.js";
 import { canEdit, isTrusted, visibility } from "../events.js";
 import { MAX_IMAGE_BYTES, deleteImage, detectImageType, saveImage } from "../images.js";
 import { notifyAdminsPendingReview, sendOrderConfirmation } from "../mail/messages.js";
@@ -217,6 +218,83 @@ organizerRouter.post("/events/:id/ticket-types", async (req, res) => {
     data: { ...data, eventId: event.id },
   });
   res.status(201).json(ticketType);
+});
+
+// Editar un tipo de entrada. El precio nuevo vale para las compras que vienen (cada entrada
+// guarda el precio con el que se compró) y el cupo no puede quedar por debajo de lo vendido.
+const updateTicketTypeSchema = z.object({
+  name: createTicketTypeSchema.shape.name.optional(),
+  priceCents: createTicketTypeSchema.shape.priceCents.optional(),
+  capacity: createTicketTypeSchema.shape.capacity.optional(),
+  // null = sacar la fecha de fin o el lote anterior.
+  salesEndAt: z.coerce.date().refine(inTheFuture, "Tiene que ser una fecha futura").nullable().optional(),
+  opensAfterId: z.string().min(1).max(50).nullable().optional(),
+});
+
+async function findOwnTicketType(req: { params: Record<string, string | string[]> }, user: ReturnType<typeof userOf>) {
+  const event = await findOwnEvent(String(req.params.id), user.id);
+  assertEditable(event, user);
+  const type = event.ticketTypes.find((t) => t.id === String(req.params.typeId));
+  if (!type) throw new HttpError(404, "Tipo de entrada no encontrado");
+  return { event, type };
+}
+
+organizerRouter.patch("/events/:id/ticket-types/:typeId", async (req, res) => {
+  const data = updateTicketTypeSchema.parse(req.body);
+  const user = userOf(res);
+  const { event, type } = await findOwnTicketType(req, user);
+
+  if (data.name && event.ticketTypes.some((t) => t.id !== type.id && t.name.toLowerCase() === data.name!.toLowerCase())) {
+    throw new HttpError(409, "Ya existe un tipo de entrada con ese nombre");
+  }
+  if (data.salesEndAt && data.salesEndAt > event.startsAt) {
+    throw new HttpError(400, "La venta de un lote no puede terminar después del evento");
+  }
+  if (data.opensAfterId) {
+    if (data.opensAfterId === type.id || !event.ticketTypes.some((t) => t.id === data.opensAfterId)) {
+      throw new HttpError(400, "El lote anterior tiene que ser otro tipo de entrada de este evento");
+    }
+    // Sin círculos: el lote anterior no puede depender (directa o indirectamente) de este.
+    let current: string | null = data.opensAfterId;
+    for (let i = 0; current && i <= event.ticketTypes.length; i++) {
+      if (current === type.id) throw new HttpError(400, "Esa combinación de lotes se habilitaría en círculo");
+      current = event.ticketTypes.find((t) => t.id === current)?.opensAfterId ?? null;
+    }
+  }
+
+  // El cupo se cambia solo si no queda por debajo de lo vendido o reservado en ese momento.
+  const updated = await prisma.ticketType.updateMany({
+    where: { id: type.id, ...(data.capacity !== undefined ? { sold: { lte: data.capacity } } : {}) },
+    data,
+  });
+  if (updated.count === 0) {
+    const { sold } = await prisma.ticketType.findUniqueOrThrow({ where: { id: type.id } });
+    throw new HttpError(409, `Ya hay ${sold} entradas vendidas o reservadas: el cupo no puede ser menor`);
+  }
+  res.json(await prisma.ticketType.findUniqueOrThrow({ where: { id: type.id } }));
+});
+
+// Borrar un tipo de entrada: solo si todavía no tiene ninguna entrada (ni reservada). Si ya vendió,
+// la venta se corta con "venta hasta" o bajando el cupo, para no perder el historial.
+organizerRouter.delete("/events/:id/ticket-types/:typeId", async (req, res) => {
+  const user = userOf(res);
+  const { event, type } = await findOwnTicketType(req, user);
+  if (await prisma.ticket.count({ where: { ticketTypeId: type.id } })) {
+    throw new HttpError(409, "Este tipo ya tiene entradas: no se puede borrar. Para cortar la venta, poné \"venta hasta\" o bajá el cupo.");
+  }
+  if (event.status !== "DRAFT" && event.status !== "REJECTED" && event.ticketTypes.length === 1) {
+    throw new HttpError(409, "El evento necesita al menos un tipo de entrada");
+  }
+  try {
+    await prisma.ticketType.delete({ where: { id: type.id } });
+  } catch (err) {
+    // Alguien compró justo en ese momento: ya tiene entradas.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+      throw new HttpError(409, "Este tipo ya tiene entradas: no se puede borrar.");
+    }
+    throw err;
+  }
+  res.json({ ok: true });
 });
 
 // Sube o reemplaza el flyer. El cuerpo del pedido es la imagen (JPG, PNG o WebP).

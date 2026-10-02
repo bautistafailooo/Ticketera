@@ -84,6 +84,10 @@ function render(event) {
       <td class="num">${tt.courtesy}</td>
       <td class="num">${tt.checkedIn}</td>
       <td class="num">${formatPrice(tt.revenueCents)}</td>
+      ${event.editable ? `<td><div class="row-actions">
+        <button type="button" class="btn btn-secondary btn-small" data-edit-type="${escapeHtml(tt.id)}">Editar</button>
+        ${tt.sold === 0 && tt.paid === 0 && tt.courtesy === 0 ? `<button type="button" class="btn btn-secondary btn-small" data-delete-type="${escapeHtml(tt.id)}">Borrar</button>` : ""}
+      </div></td>` : ""}
     </tr>`).join("");
 
   const orderRows = event.orders.map((o) => `
@@ -154,13 +158,13 @@ function render(event) {
         <h2>Tipos de entrada</h2>
         ${event.ticketTypes.length
           ? `<div class="table-wrap"><table>
-              <thead><tr><th>Tipo</th><th>Venta</th><th class="num">Precio</th><th class="num">Vendidas</th><th class="num">Pagas</th><th class="num">Cortesías</th><th class="num">Ingresaron</th><th class="num">Recaudado</th></tr></thead>
+              <thead><tr><th>Tipo</th><th>Venta</th><th class="num">Precio</th><th class="num">Vendidas</th><th class="num">Pagas</th><th class="num">Cortesías</th><th class="num">Ingresaron</th><th class="num">Recaudado</th>${event.editable ? "<th></th>" : ""}</tr></thead>
               <tbody>${ticketRows}</tbody>
             </table></div>`
           : '<p class="muted">Todavía no hay tipos de entrada. Agregá al menos uno para poder publicar.</p>'}
 
         <form id="new-ticket-type" ${event.editable ? "" : "hidden"}>
-          <h3 style="margin-top: 24px">Agregar tipo de entrada</h3>
+          <h3 style="margin-top: 24px" id="tt-title">Agregar tipo de entrada</h3>
           <div class="form-row">
             <div><label for="tt-name">Nombre</label><input id="tt-name" required maxlength="60" placeholder="Campo, Platea, VIP…"></div>
             <div><label for="tt-price">Precio ($)</label><input id="tt-price" required inputmode="decimal" placeholder="35.000"></div>
@@ -180,7 +184,10 @@ function render(event) {
               </div>
             </div>
           </details>
-          <div class="form-actions"><button type="submit" class="btn btn-secondary">Agregar</button></div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-secondary" id="tt-submit">Agregar</button>
+            <button type="button" class="btn btn-secondary" id="tt-cancel" hidden>Cancelar</button>
+          </div>
           <p id="tt-message" class="error" role="alert" style="margin: 12px 0 0"></p>
         </form>
       </section>
@@ -368,21 +375,68 @@ function bind(event) {
     }
   });
 
+  // El mismo formulario sirve para agregar y para editar un tipo de entrada.
+  let editingType = null;
+  const ticketForm = document.getElementById("new-ticket-type");
+  const setEditing = (tt) => {
+    editingType = tt;
+    document.getElementById("tt-title").textContent = tt ? `Editar "${tt.name}"` : "Agregar tipo de entrada";
+    document.getElementById("tt-submit").textContent = tt ? "Guardar cambios" : "Agregar";
+    document.getElementById("tt-cancel").hidden = !tt;
+    document.getElementById("tt-message").textContent = "";
+    document.getElementById("tt-name").value = tt?.name ?? "";
+    document.getElementById("tt-price").value = tt ? String(tt.priceCents / 100).replace(".", ",") : "";
+    document.getElementById("tt-capacity").value = tt?.capacity ?? "";
+    document.getElementById("tt-sales-end").value = tt?.salesEndAt ? argentinaLocalValue(tt.salesEndAt) : "";
+    const select = document.getElementById("tt-opens-after");
+    for (const option of select.options) option.hidden = Boolean(tt) && option.value === tt.id;
+    select.value = tt?.opensAfterId ?? "";
+    if (tt && (tt.salesEndAt || tt.opensAfterId)) ticketForm.querySelector(".lot-options").open = true;
+    if (tt) ticketForm.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // En la sección (que se vuelve a dibujar en cada recarga), así el listener no se acumula.
+  ticketForm.closest("section").addEventListener("click", async (e) => {
+    const edit = e.target.closest("[data-edit-type]");
+    if (edit) setEditing(event.ticketTypes.find((t) => t.id === edit.dataset.editType));
+    const remove = e.target.closest("[data-delete-type]");
+    if (remove) {
+      const tt = event.ticketTypes.find((t) => t.id === remove.dataset.deleteType);
+      if (!confirm(`¿Borrar "${tt.name}"?`)) return;
+      try {
+        await api(`${eventPath}/ticket-types/${encodeURIComponent(tt.id)}`, { method: "DELETE" });
+        await load();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  });
+  on("tt-cancel", "click", () => setEditing(null));
+
   on("new-ticket-type", "submit", async (e) => {
     e.preventDefault();
     const message = document.getElementById("tt-message");
     message.textContent = "";
+    const salesEnd = document.getElementById("tt-sales-end").value;
+    const opensAfter = document.getElementById("tt-opens-after").value;
     try {
-      await api(`${eventPath}/ticket-types`, {
-        method: "POST",
-        body: JSON.stringify({
-          name: document.getElementById("tt-name").value,
-          priceCents: pesosToCents(document.getElementById("tt-price").value),
-          capacity: Number(document.getElementById("tt-capacity").value),
-          salesEndAt: document.getElementById("tt-sales-end").value ? argentinaDate(document.getElementById("tt-sales-end").value) : undefined,
-          opensAfterId: document.getElementById("tt-opens-after").value || undefined,
-        }),
-      });
+      const fields = {
+        name: document.getElementById("tt-name").value,
+        priceCents: pesosToCents(document.getElementById("tt-price").value),
+        capacity: Number(document.getElementById("tt-capacity").value),
+      };
+      if (editingType) {
+        // Al editar, vaciar un campo de lote lo saca (null).
+        await api(`${eventPath}/ticket-types/${encodeURIComponent(editingType.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify({ ...fields, salesEndAt: salesEnd ? argentinaDate(salesEnd) : null, opensAfterId: opensAfter || null }),
+        });
+      } else {
+        await api(`${eventPath}/ticket-types`, {
+          method: "POST",
+          body: JSON.stringify({ ...fields, salesEndAt: salesEnd ? argentinaDate(salesEnd) : undefined, opensAfterId: opensAfter || undefined }),
+        });
+      }
       await load();
     } catch (err) {
       message.textContent = err.message;
