@@ -41,6 +41,10 @@ function render(event) {
             <span>${escapeHtml(event.venue)}${event.address ? `<span class="address">${escapeHtml(event.address)}</span>` : ""}</span>
           </div>
           ${event.description ? `<p class="description">${escapeHtml(event.description)}</p>` : ""}
+          <button type="button" class="btn btn-secondary share-button" id="share">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>
+            <span>Compartir</span>
+          </button>
         </div>
       </div>
     </section>
@@ -123,6 +127,28 @@ function render(event) {
     const id = step.closest(".stepper").dataset.id;
     quantities.set(id, Math.max(0, quantities.get(id) + Number(step.dataset.step)));
     update();
+  });
+
+  // Compartir: en el celular abre el menú de compartir (WhatsApp, Instagram…); si no, copia el link.
+  document.getElementById("share").addEventListener("click", async (e) => {
+    const button = e.currentTarget;
+    const url = `${location.origin}/evento.html?id=${encodeURIComponent(event.id)}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: event.name, text: `${event.name} · ${formatDate(event.startsAt)} h`, url });
+      } catch {
+        // cancelado
+      }
+      return;
+    }
+    const label = button.querySelector("span");
+    try {
+      await navigator.clipboard.writeText(url);
+      label.textContent = "¡Link copiado!";
+    } catch {
+      label.textContent = url;
+    }
+    setTimeout(() => (label.textContent = "Compartir"), 2500);
   });
 
   document.getElementById("mobile-continue").addEventListener("click", () => {

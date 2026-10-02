@@ -11,6 +11,7 @@ import { organizerRouter } from "./routes/organizer.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { rateLimits, securityHeaders, sitePrivacy } from "./security.js";
+import { sharePreviews } from "./share.js";
 
 // Las respuestas de la API pueden tener datos personales o códigos de entrada:
 // que ningún navegador ni proxy las guarde.
@@ -25,6 +26,8 @@ export function createApp() {
   app.use(securityHeaders);
   app.use(sitePrivacy);
   app.use(express.json({ limit: "20kb" }));
+  // Portada y páginas de eventos con la vista previa para compartir (antes de los archivos estáticos).
+  app.get(["/", "/index.html", "/evento.html"], sharePreviews);
   app.use(express.static(path.join(import.meta.dirname, "../public")));
   // Flyers de los eventos. Los nombres son aleatorios y no cambian: se pueden cachear.
   app.use(
