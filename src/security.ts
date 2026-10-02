@@ -10,8 +10,9 @@ export const securityHeaders = helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      // Las fuentes están en /fonts (no se cargan de Google).
+      fontSrc: ["'self'"],
       // blob: para la vista previa del flyer antes de subirlo.
       imgSrc: ["'self'", "data:", "blob:"],
       mediaSrc: ["'self'", "blob:"],

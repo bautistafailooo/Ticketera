@@ -1,3 +1,32 @@
+/* ---------------- Tipografías (en /fonts, licencia OFL) ---------------- */
+/* Bricolage Grotesque: títulos. Instrument Sans: texto. Space Mono: fechas, etiquetas
+   y códigos, como en una entrada impresa. */
+
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/bricolage-grotesque.woff2") format("woff2-variations");
+  font-weight: 200 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("/fonts/instrument-sans.woff2") format("woff2-variations");
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Mono";
+  src: url("/fonts/space-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Space Mono";
+  src: url("/fonts/space-mono-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
 /* ================================================================
    ecko — tema oscuro
    ================================================================ */
@@ -33,9 +62,9 @@
   --radius-sm: 10px;
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -93,11 +122,16 @@ img { max-width: 100%; display: block; }
 
 h1, h2, h3 {
   font-family: var(--font-display);
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   margin: 0 0 8px;
 }
-h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; }
+h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.035em; }
+
+/* Etiquetas en mono: fechas, estados, encabezados de tablas, contadores. */
+.badge, th, .date-chip .month, .event-hero .when, .marquee-item .d, .stat .label, .countdown, .ticket-stub .info dt, .eyebrow {
+  font-family: var(--font-mono);
+}
 h2 { font-size: 1.3rem; font-weight: 700; }
 h3 { font-size: 1.05rem; font-weight: 700; }
 
@@ -336,10 +370,10 @@ input[readonly] { color: var(--muted); }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--surface-3);
@@ -377,7 +411,7 @@ input[readonly] { color: var(--muted); }
 .table-wrap { overflow-x: auto; margin: 0 -4px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-th { color: var(--faint); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+th { color: var(--faint); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
 td { white-space: nowrap; }
 td.wrap { white-space: normal; }
 .num { text-align: right; }
@@ -485,7 +519,7 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
   min-width: 52px;
 }
 .date-chip .day { display: block; font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; }
-.date-chip .month { display: block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.date-chip .month { display: block; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
 
 /* Flyer o, si no hay, un degradé con la inicial. */
 .flyer { width: 100%; height: 100%; object-fit: cover; background: var(--surface-2); }
@@ -532,7 +566,7 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
   align-items: end;
 }
 .event-hero .poster { border-radius: var(--radius); overflow: hidden; aspect-ratio: 4 / 5; box-shadow: var(--shadow); }
-.event-hero .when { color: var(--accent); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.9rem; }
+.event-hero .when { color: var(--accent); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.85rem; }
 .event-hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 8px 0 12px; }
 .event-hero .where { color: var(--muted); font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
 .event-hero .description { margin-top: 16px; max-width: 60ch; color: var(--muted); white-space: pre-line; }
@@ -576,7 +610,7 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 .order-head { display: flex; gap: 20px; align-items: center; margin-bottom: 24px; }
 .order-head .thumb { width: 88px; aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden; flex: none; }
 
-.countdown { font-family: var(--font-display); font-size: 2.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.countdown { font-size: 2.6rem; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .countdown.low { color: var(--warn); }
 
 .tickets { display: grid; gap: 20px; }
@@ -664,7 +698,7 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 24px 0; }
 .stat .value { font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.stat .label { color: var(--muted); font-size: 0.85rem; }
+.stat .label { color: var(--muted); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
 
 .admin-head { display: grid; grid-template-columns: 120px 1fr auto; gap: 24px; align-items: center; margin-bottom: 8px; }
 .admin-head .thumb { aspect-ratio: 4 / 5; border-radius: 12px; overflow: hidden; }
