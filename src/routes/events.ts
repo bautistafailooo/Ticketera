@@ -18,6 +18,8 @@ const publicEvent = {
   venue: true,
   address: true,
   startsAt: true,
+  // Quién organiza (solo el nombre: el link lleva a su perfil público).
+  organizer: { select: { id: true, name: true } },
   ticketTypes: {
     select: { id: true, name: true, priceCents: true, capacity: true, sold: true, salesEndAt: true, opensAfterId: true },
     orderBy: { priceCents: "asc" },

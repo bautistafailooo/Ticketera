@@ -9,7 +9,51 @@ import {
   setupPanelPage,
 } from "/js/common.js";
 
-await setupPanelPage();
+const me = await setupPanelPage();
+
+// Perfil público: descripción y redes que se ven en /organizador.html.
+const profileUrl = `${location.origin}/organizador.html?id=${encodeURIComponent(me.id)}`;
+document.getElementById("pf-view").href = profileUrl;
+const openProfileFromHash = () => {
+  if (location.hash === "#perfil") document.getElementById("perfil").open = true;
+};
+openProfileFromHash();
+window.addEventListener("hashchange", openProfileFromHash);
+api("/organizer/profile").then((profile) => {
+  document.getElementById("pf-bio").value = profile.bio ?? "";
+  document.getElementById("pf-instagram").value = profile.instagram ? `@${profile.instagram}` : "";
+  document.getElementById("pf-website").value = profile.website ?? "";
+}).catch(() => {});
+document.getElementById("profile-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = document.getElementById("pf-message");
+  try {
+    const profile = await api("/organizer/profile", {
+      method: "PATCH",
+      body: JSON.stringify({
+        bio: document.getElementById("pf-bio").value,
+        instagram: document.getElementById("pf-instagram").value,
+        website: document.getElementById("pf-website").value,
+      }),
+    });
+    document.getElementById("pf-instagram").value = profile.instagram ? `@${profile.instagram}` : "";
+    document.getElementById("pf-website").value = profile.website ?? "";
+    message.className = "success";
+    message.textContent = "Perfil guardado.";
+  } catch (err) {
+    message.className = "error";
+    message.textContent = err.message;
+  }
+});
+document.getElementById("pf-copy").addEventListener("click", async (e) => {
+  try {
+    await navigator.clipboard.writeText(profileUrl);
+    e.target.textContent = "¡Copiado!";
+  } catch {
+    e.target.textContent = profileUrl;
+  }
+  setTimeout(() => (e.target.textContent = "Copiar link"), 2500);
+});
 
 // Cuenta de Mercado Pago: las ventas se cobran ahí.
 const mpCard = document.getElementById("mercadopago");

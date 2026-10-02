@@ -24,6 +24,7 @@
           </button>
           <div class="account-menu" id="account-menu" hidden>
             <div class="account-info"><strong id="menu-name"></strong><span id="menu-email"></span></div>
+            <a href="/panel.html#perfil" id="menu-profile">Mi página pública</a>
             <a href="/">Ver la cartelera</a>
             <button type="button" id="logout">Cerrar sesión</button>
           </div>
@@ -43,6 +44,24 @@
     </div>
 
     <section class="card mp-card" id="mercadopago" hidden style="margin-bottom: 24px"></section>
+
+    <details class="card profile-card" id="perfil" style="margin-bottom: 24px">
+      <summary><h2 style="display: inline">Mi perfil público</h2> <span class="muted small">Tu página con todos tus eventos, para compartir</span></summary>
+      <form id="profile-form" style="margin-top: 16px">
+        <label for="pf-bio">Descripción</label>
+        <textarea id="pf-bio" maxlength="500" placeholder="Contá quiénes son, qué tipo de eventos hacen…"></textarea>
+        <div class="form-row">
+          <div><label for="pf-instagram">Instagram</label><input id="pf-instagram" maxlength="200" placeholder="@tuproductora"></div>
+          <div><label for="pf-website">Sitio web</label><input id="pf-website" maxlength="200" placeholder="tuproductora.com"></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-secondary">Guardar perfil</button>
+          <a class="btn btn-secondary" id="pf-view" target="_blank">Ver mi página</a>
+          <button type="button" class="btn btn-secondary" id="pf-copy">Copiar link</button>
+        </div>
+        <p id="pf-message" role="status" style="margin: 12px 0 0"></p>
+      </form>
+    </details>
 
     <form class="card" id="new-event" hidden style="margin-bottom: 24px">
       <h2>Nuevo evento</h2>

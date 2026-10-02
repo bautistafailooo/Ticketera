@@ -9,6 +9,7 @@ import { eventsRouter } from "./routes/events.js";
 import { ordersRouter } from "./routes/orders.js";
 import { organizerRouter } from "./routes/organizer.js";
 import { legalRouter } from "./routes/legal.js";
+import { organizersRouter } from "./routes/organizers.js";
 import { paymentsRouter } from "./routes/payments.js";
 import { ticketsRouter } from "./routes/tickets.js";
 import { rateLimits, securityHeaders, sitePrivacy } from "./security.js";
@@ -28,7 +29,7 @@ export function createApp() {
   app.use(sitePrivacy);
   app.use(express.json({ limit: "20kb" }));
   // Portada y páginas de eventos con la vista previa para compartir (antes de los archivos estáticos).
-  app.get(["/", "/index.html", "/evento.html"], sharePreviews);
+  app.get(["/", "/index.html", "/evento.html", "/organizador.html"], sharePreviews);
   app.use(express.static(path.join(import.meta.dirname, "../public")));
   // Flyers de los eventos. Los nombres son aleatorios y no cambian: se pueden cachear.
   app.use(
@@ -53,6 +54,7 @@ export function createApp() {
   app.use("/orders", api, ordersRouter);
   app.use("/payments", api, paymentsRouter);
   app.use("/legal", api, legalRouter);
+  app.use("/organizers", api, organizersRouter);
   app.use("/tickets", rateLimits.api, ticketsRouter);
 
   app.use(errorHandler);

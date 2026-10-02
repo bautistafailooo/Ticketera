@@ -54,6 +54,7 @@ function render(event) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>
             <span>${escapeHtml(event.venue)}${event.address ? `<span class="address">${escapeHtml(event.address)}</span>` : ""}</span>
           </div>
+          ${event.organizer ? `<p class="organizer-line">Organiza <a href="/organizador.html?id=${encodeURIComponent(event.organizer.id)}">${escapeHtml(event.organizer.name)}</a></p>` : ""}
           ${event.description ? `<p class="description">${escapeHtml(event.description)}</p>` : ""}
           <button type="button" class="btn btn-secondary share-button" id="share">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/></svg>

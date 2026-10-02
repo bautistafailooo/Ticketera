@@ -141,6 +141,7 @@ export async function setupPanelPage() {
   document.getElementById("user-initial").textContent = (user.name.trim()[0] ?? "?").toUpperCase();
   document.getElementById("menu-name").textContent = user.name;
   document.getElementById("menu-email").textContent = user.email;
+  document.getElementById("menu-profile").href = `/organizador.html?id=${encodeURIComponent(user.id)}`;
   document.getElementById("logout").addEventListener("click", logout);
   document.getElementById("admin-link").hidden = user.role !== "ADMIN";
   setupAccountMenu();

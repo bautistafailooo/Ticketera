@@ -483,3 +483,55 @@ organizerRouter.post("/events/:id/cortesias", rateLimits.courtesies, async (req,
   sendInBackground("cortesía", () => sendOrderConfirmation(order.id));
   res.status(201).json({ id: order.id, quantity: data.quantity, email: data.email });
 });
+
+// --- Perfil público ---
+
+// Instagram: se acepta "@usuario", "usuario" o el link al perfil; se guarda solo el usuario.
+const instagramSchema = z
+  .string()
+  .trim()
+  .max(200)
+  .transform((value) => value.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/[/?#].*$/, ""))
+  .refine((value) => value === "" || /^[A-Za-z0-9._]{1,30}$/.test(value), "Usuario de Instagram inválido");
+
+// Sitio web: solo http o https (nada de "javascript:" ni otros esquemas).
+const websiteSchema = z
+  .string()
+  .trim()
+  .max(200)
+  .transform((value) => (value && !/^https?:\/\//i.test(value) ? `https://${value}` : value))
+  .refine((value) => {
+    if (!value) return true;
+    try {
+      const url = new URL(value);
+      return (url.protocol === "https:" || url.protocol === "http:") && url.hostname.includes(".");
+    } catch {
+      return false;
+    }
+  }, "Sitio web inválido");
+
+const profileSchema = z.object({
+  bio: z.string().trim().max(500).optional(),
+  instagram: instagramSchema.optional(),
+  website: websiteSchema.optional(),
+});
+
+const profileOf = (user: { id: string; name: string; bio: string | null; instagram: string | null; website: string | null }) => ({
+  id: user.id,
+  name: user.name,
+  bio: user.bio,
+  instagram: user.instagram,
+  website: user.website,
+});
+
+organizerRouter.get("/profile", (_req, res) => {
+  res.json(profileOf(userOf(res)));
+});
+
+organizerRouter.patch("/profile", async (req, res) => {
+  const data = profileSchema.parse(req.body);
+  // Un campo vacío se borra.
+  const clean = Object.fromEntries(Object.entries(data).map(([key, value]) => [key, value === "" ? null : value]));
+  const user = await prisma.user.update({ where: { id: userOf(res).id }, data: clean });
+  res.json(profileOf(user));
+});

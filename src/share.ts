@@ -5,6 +5,7 @@ import { config } from "./config.js";
 import { prisma } from "./db.js";
 import { onSaleWhere } from "./events.js";
 import { withLots } from "./lots.js";
+import { publicProfile } from "./routes/organizers.js";
 import { esc, formatDate, formatPrice } from "./mail/templates.js";
 
 // Vista previa al compartir un link (WhatsApp, Instagram, Telegram, X…). Esas apps no ejecutan
@@ -64,6 +65,18 @@ async function eventPreview(id: string): Promise<Preview | null> {
   };
 }
 
+async function organizerPreview(id: string): Promise<Preview | null> {
+  const profile = await publicProfile(id);
+  if (!profile) return null;
+  const count = profile.events.length;
+  return {
+    title: `${profile.name} en ecko`,
+    description: profile.bio?.slice(0, 200) || (count ? `${count} ${count === 1 ? "evento" : "eventos"} a la venta. Comprá tus entradas en ecko.` : "Organizador en ecko."),
+    image: `${config.publicUrl}${profile.events.find((e) => e.imageFile) ? `/media/${encodeURIComponent(profile.events.find((e) => e.imageFile)!.imageFile!)}` : DEFAULT_IMAGE}`,
+    url: `${config.publicUrl}/organizador.html?id=${encodeURIComponent(profile.id)}`,
+  };
+}
+
 const sitePreview = (): Preview => ({
   title: "ecko · Entradas para eventos",
   description: "Entradas para recitales, fiestas, teatro y más. Comprá en minutos y recibí tu QR al instante.",
@@ -89,6 +102,11 @@ export const sharePreviews: RequestHandler = async (req, res, next) => {
       const preview = id ? await eventPreview(id) : null;
       if (!preview) return next();
       html = await render("evento.html", preview, `${preview.title} · ecko`);
+    } else if (req.path === "/organizador.html") {
+      const id = typeof req.query.id === "string" ? req.query.id.slice(0, 50) : "";
+      const preview = id ? await organizerPreview(id) : null;
+      if (!preview) return next();
+      html = await render("organizador.html", preview, `${preview.title.replace(/ en ecko$/, "")} · ecko`);
     } else {
       return next();
     }

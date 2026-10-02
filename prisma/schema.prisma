@@ -40,6 +40,10 @@ model User {
   trustedAt    DateTime?
   // Suspendido: no puede publicar y sus eventos salen de la cartelera.
   suspendedAt  DateTime?
+  // Perfil público del organizador (/organizador.html?id=…). El email nunca se muestra.
+  bio          String?
+  instagram    String?
+  website      String?
   // Cuenta de Mercado Pago conectada (OAuth): las ventas se cobran en esa cuenta.
   // Los tokens se guardan cifrados (ver src/payments/crypto.ts).
   mpUserId         String?

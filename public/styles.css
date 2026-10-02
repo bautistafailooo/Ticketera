@@ -736,6 +736,36 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 .lot-options summary { cursor: pointer; color: var(--muted); font-weight: 600; font-size: 0.92rem; }
 .lot-options[open] summary { margin-bottom: 4px; }
 
+/* ---------------- Perfil del organizador ---------------- */
+
+.profile-head { display: flex; gap: 24px; align-items: center; margin: 12px 0 8px; }
+.profile-head h1 { margin-bottom: 6px; }
+.profile-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: var(--gradient);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 3rem;
+  box-shadow: 0 0 40px rgba(179, 92, 255, 0.35);
+}
+.profile-card summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.profile-card summary::-webkit-details-marker { display: none; }
+.profile-card summary::after { content: "▾"; color: var(--faint); margin-left: auto; }
+.profile-card[open] summary::after { content: "▴"; }
+.profile-bio { color: var(--muted); max-width: 60ch; white-space: pre-line; margin: 0; }
+.organizer-line { margin-top: 10px; color: var(--muted); font-size: 0.95rem; }
+.organizer-line a { color: var(--text); font-weight: 600; }
+@media (max-width: 600px) {
+  .profile-head { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .profile-avatar { width: 80px; height: 80px; font-size: 2.3rem; }
+}
+
 /* ---------------- Páginas legales ---------------- */
 
 .legal article { max-width: 760px; margin: 0 auto; }
