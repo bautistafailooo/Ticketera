@@ -2,8 +2,8 @@ import { config } from "./config.js";
 import { prisma } from "./db.js";
 import { MercadoPagoError, sellerToken } from "./payments/mercadopago.js";
 
-// Muestra qué ve Mercado Pago de cada organizador conectado: su cuenta y sus últimos pagos
-// (con el motivo si fueron rechazados). Uso: npm run mp:diagnostico
+// Muestra qué ve Mercado Pago de cada organizador conectado: su cuenta y los últimos pagos de
+// compras de ecko (con el motivo si fueron rechazados). Uso: npm run mp:diagnostico
 if (!config.mercadoPago) {
   console.log("Mercado Pago no está configurado (faltan MP_CLIENT_ID y MP_CLIENT_SECRET en el .env).");
   process.exit(1);
@@ -44,9 +44,16 @@ for (const seller of sellers) {
     const test = (me.tags ?? []).includes("test_user");
     console.log(`Cuenta de Mercado Pago: ${me.nickname} (User ID ${me.id}, ${me.site_id})${test ? " · CUENTA DE PRUEBA" : " · cuenta real"}`);
 
-    const search = await get("/v1/payments/search?sort=date_created&criteria=desc&limit=5", token);
-    const payments = (search.results ?? []) as Record<string, any>[];
-    if (payments.length === 0) console.log("Sin pagos todavía (Mercado Pago no llegó a crear ningún pago para esta cuenta).");
+    // Solo los pagos de compras de ecko: la cuenta del organizador tiene también sus pagos
+    // personales, que no son asunto de ecko y no se muestran.
+    const search = await get("/v1/payments/search?sort=date_created&criteria=desc&limit=50", token);
+    const all = (search.results ?? []) as Record<string, any>[];
+    const refs = all.map((p) => p.external_reference).filter((r): r is string => typeof r === "string");
+    const ours = new Set(
+      (await prisma.order.findMany({ where: { id: { in: refs }, event: { organizerId: seller.id } }, select: { id: true } })).map((o) => o.id),
+    );
+    const payments = all.filter((p) => ours.has(p.external_reference)).slice(0, 5);
+    if (payments.length === 0) console.log("Sin pagos de ecko todavía (Mercado Pago no llegó a crear ningún pago de una compra).");
     for (const p of payments) {
       const motivo = MOTIVOS[p.status_detail] ?? "";
       console.log(
