@@ -129,7 +129,7 @@ h1, h2, h3 {
 h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); font-weight: 800; letter-spacing: -0.035em; }
 
 /* Etiquetas en mono: fechas, estados, encabezados de tablas, contadores. */
-.badge, th, .date-chip .month, .event-hero .when, .marquee-item .d, .stat .label, .countdown, .ticket-stub .info dt, .eyebrow {
+.badge, th, .event-hero .when, .marquee-item .d, .stat .label, .countdown, .ticket-stub .info dt, .eyebrow {
   font-family: var(--font-mono);
 }
 h2 { font-size: 1.3rem; font-weight: 700; }
@@ -483,44 +483,42 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 
 /* ---------------- Tarjetas de eventos ---------------- */
 
-.event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; }
+.event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 36px 24px; }
 
-.event-card {
-  display: flex;
-  flex-direction: column;
-  color: inherit;
-  /* Un poco transparente: deja ver el logo de fondo detrás de los textos. */
-  background: rgba(20, 20, 31, 0.78);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+/* Tarjeta liviana: flyer cuadrado con un borde fino y los datos abajo, sin caja. */
+.event-card { display: flex; flex-direction: column; color: inherit; }
+.event-card:hover { text-decoration: none; }
+/* overflow: hidden hace que el cuadrado sea fijo: sin esto, un flyer muy alto estira la tarjeta. */
+.event-card .media {
+  position: relative;
+  aspect-ratio: 1;
   overflow: hidden;
-  transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
-}
-.event-card:hover { transform: translateY(-4px); border-color: var(--border-strong); box-shadow: var(--shadow); text-decoration: none; }
-/* overflow: hidden hace que el 4:5 sea fijo: sin esto, un flyer muy alto estira la tarjeta. */
-.event-card .media { position: relative; aspect-ratio: 4 / 5; overflow: hidden; }
-.event-card .body { padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-.event-card h3 { font-size: 1.15rem; margin: 0; }
-.event-card .venue { color: var(--muted); font-size: 0.92rem; }
-.event-card .meta { margin-top: auto; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.event-card .price { font-weight: 800; }
-.event-card .badge-slot { position: absolute; top: 12px; right: 12px; }
-
-.date-chip {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(11, 11, 18, 0.82);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 6px 10px;
-  text-align: center;
-  line-height: 1.05;
-  min-width: 52px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07);
+  transition: box-shadow 0.3s, transform 0.3s;
 }
-.date-chip .day { display: block; font-family: var(--font-display); font-size: 1.4rem; font-weight: 800; }
-.date-chip .month { display: block; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); }
+.event-card .media .flyer-frame, .event-card .media .flyer-placeholder { transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.event-card:hover .media { transform: translateY(-3px); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), 0 18px 40px -18px rgba(179, 92, 255, 0.45); }
+.event-card:hover .media .flyer-frame, .event-card:hover .media .flyer-placeholder { transform: scale(1.035); }
+.event-card .body { padding: 14px 2px 0; display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.event-card .when { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.event-card h3 { font-size: 1.08rem; font-weight: 700; line-height: 1.25; margin: 2px 0 0; }
+.event-card .venue { color: var(--muted); font-size: 0.88rem; }
+.event-card .meta {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.event-card .price { font-weight: 700; font-size: 0.95rem; }
+.event-card .price .from { color: var(--faint); font-weight: 500; font-size: 0.8rem; margin-right: 2px; }
+.event-card .go { color: var(--faint); font-size: 0.85rem; transition: transform 0.25s, color 0.25s; }
+.event-card:hover .go { color: var(--accent); transform: translateX(3px); }
+.event-card .flyer-placeholder { font-size: 3.2rem; }
+.event-card .badge-slot { position: absolute; top: 10px; left: 10px; }
+.event-card .badge-slot .badge { backdrop-filter: blur(8px); font-size: 0.65rem; }
 
 /* Flyer o, si no hay, un degradé con la inicial. */
 .flyer-frame { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--surface-2); }
@@ -958,13 +956,12 @@ mark.fill { background: rgba(255, 196, 0, 0.18); color: #ffd666; padding: 0 4px;
   main.container { padding-top: 20px; }
   .card { padding: 18px; }
   .hero { padding: 48px 0 40px; }
-  .event-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; }
-  .event-card .body { padding: 12px 12px 14px; }
-  .event-card h3 { font-size: 1rem; }
+  .event-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 26px 14px; }
+  .event-card .body { padding-top: 10px; }
+  .event-card h3 { font-size: 0.98rem; }
+  .event-card .when { font-size: 0.64rem; letter-spacing: 0.08em; }
   .bg-lights span { width: 220px; height: 220px; }
-  /* En las tarjetas angostas, "Últimas entradas" va abajo para no tapar la fecha. */
-  .event-card .badge-slot { top: auto; bottom: 10px; left: 10px; right: 10px; }
-  .event-card .badge-slot .badge { font-size: 0.65rem; padding: 4px 8px; }
+  .event-card .badge-slot .badge { font-size: 0.6rem; padding: 4px 8px; }
   .panel-grid { grid-template-columns: 1fr; }
   .ticket-stub { grid-template-columns: 1fr; }
   .ticket-stub .qr-side { border-left: none; border-top: 2px dashed var(--border-strong); }

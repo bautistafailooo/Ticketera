@@ -1,4 +1,4 @@
-import { dateChip, dateParts, escapeHtml, eventImage, formatPrice } from "/js/common.js";
+import { dateParts, escapeHtml, eventImage, formatPrice } from "/js/common.js";
 
 // Tarjeta de un evento (cartelera y perfil del organizador).
 
@@ -18,20 +18,20 @@ export function eventCard(event) {
   const onSale = event.ticketTypes.filter((t) => t.status === "onsale");
   const prices = (onSale.length ? onSale : sellable(event)).map((t) => t.priceCents);
   const from = prices.length ? Math.min(...prices) : null;
-  const { weekday, time } = dateParts(event.startsAt);
+  const { weekday, day, month, time } = dateParts(event.startsAt);
   return `
     <a class="event-card" href="/evento.html?id=${encodeURIComponent(event.id)}">
       <div class="media">
         ${eventImage(event)}
-        ${dateChip(event.startsAt)}
         <div class="badge-slot">${availabilityBadge(event)}</div>
       </div>
       <div class="body">
+        <div class="when">${escapeHtml(weekday)} ${escapeHtml(day)} ${escapeHtml(month)} · ${escapeHtml(time)}</div>
         <h3>${escapeHtml(event.name)}</h3>
         <div class="venue">${escapeHtml(event.venue)}</div>
-        <div class="faint small cap">${escapeHtml(weekday)} · ${escapeHtml(time)} h</div>
         <div class="meta">
-          <span class="price">${from === null ? "" : from === 0 ? "Gratis" : `<span class="faint small" style="font-weight: 500">Desde</span> ${formatPrice(from)}`}</span>
+          <span class="price">${from === null ? "" : from === 0 ? "Gratis" : `<span class="from">Desde</span> ${formatPrice(from)}`}</span>
+          <span class="go" aria-hidden="true">→</span>
         </div>
       </div>
     </a>`;

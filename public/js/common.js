@@ -75,12 +75,6 @@ export function dateParts(iso) {
   };
 }
 
-// Chip con el día y el mes, para poner sobre el flyer.
-export function dateChip(iso) {
-  const { day, month } = dateParts(iso);
-  return `<div class="date-chip"><span class="day">${escapeHtml(day)}</span><span class="month">${escapeHtml(month)}</span></div>`;
-}
-
 // Flyer del evento o, si no tiene, un degradé con su inicial.
 // Flyer completo (sin recortar) sobre una copia desenfocada del mismo flyer que rellena el
 // espacio que sobra: así todas las tarjetas miden lo mismo y no se corta el texto del flyer.
