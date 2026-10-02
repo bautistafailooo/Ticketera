@@ -132,8 +132,16 @@ type PreferenceInput = {
   notificationUrl: string;
 };
 
+// Para diagnosticar pagos que Mercado Pago rechaza sin decir por qué: MP_OMITIR en el .env
+// (separado por comas) saca opciones del pago. Valores: comision, binario, medios, vencimiento, descriptor.
+// Ej.: MP_OMITIR=comision,binario,medios,vencimiento,descriptor manda el pago lo más simple posible.
+function omitted() {
+  return new Set((process.env.MP_OMITIR ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean));
+}
+
 export async function createPreference(token: string, input: PreferenceInput) {
   const https = input.returnUrl.startsWith("https://");
+  const skip = omitted();
   const preference = await call<{ id: string; init_point: string; sandbox_init_point?: string }>("/checkout/preferences", {
     method: "POST",
     token,
@@ -148,20 +156,24 @@ export async function createPreference(token: string, input: PreferenceInput) {
       // un email que no es el de la cuenta con la que se paga, puede bloquear el pago
       // (con las cuentas de prueba, el botón "Pagar" queda deshabilitado).
       external_reference: input.orderId,
-      marketplace_fee: input.feeCents / 100,
+      ...(skip.has("comision") ? {} : { marketplace_fee: input.feeCents / 100 }),
       // Las entradas están reservadas por pocos minutos: solo pagos que se aprueban o rechazan
       // en el momento (sin efectivo en Rapipago/Pago Fácil, que tarda días).
-      binary_mode: true,
-      payment_methods: { excluded_payment_types: [{ id: "ticket" }, { id: "atm" }] },
-      expires: true,
-      expiration_date_to: input.expiresAt.toISOString(),
+      ...(skip.has("binario") ? {} : { binary_mode: true }),
+      ...(skip.has("medios") ? {} : { payment_methods: { excluded_payment_types: [{ id: "ticket" }, { id: "atm" }] } }),
+      ...(skip.has("vencimiento") ? {} : { expires: true, expiration_date_to: input.expiresAt.toISOString() }),
       back_urls: { success: input.returnUrl, failure: input.returnUrl, pending: input.returnUrl },
       // Mercado Pago solo vuelve solo al sitio si la dirección es https.
       ...(https ? { auto_return: "approved" } : {}),
       notification_url: input.notificationUrl,
-      statement_descriptor: "ECKO ENTRADAS",
+      ...(skip.has("descriptor") ? {} : { statement_descriptor: "ECKO ENTRADAS" }),
     },
   });
+  console.log(
+    `Pago creado en Mercado Pago (preferencia ${preference.id}) para la orden ${input.orderId}` +
+      (skip.size ? `, sin: ${[...skip].join(", ")}` : "") +
+      ".",
+  );
   return preference;
 }
 

@@ -320,3 +320,27 @@ describe("checkout sin email del comprador", () => {
     expect(fake.preferences[0].body.payer).toBeUndefined();
   });
 });
+
+describe("MP_OMITIR (diagnóstico)", () => {
+  it("saca las opciones indicadas del pago", async () => {
+    process.env.MP_OMITIR = "comision, binario,medios,vencimiento,descriptor";
+    try {
+      const agent = await organizer();
+      const start = await agent.get("/organizer/mercadopago/connect");
+      const state = new URL(start.headers.location).searchParams.get("state");
+      await agent.get(`/organizer/mercadopago/callback?code=codigo-ok&state=${state}`);
+      const event = await agent.post("/organizer/events").send({ name: "Fiesta", venue: "Club", startsAt: inDays(10) });
+      const type = await agent.post(`/organizer/events/${event.body.id}/ticket-types`).send({ name: "General", priceCents: 100000, capacity: 5 });
+      await agent.post(`/organizer/events/${event.body.id}/publish`);
+      const order = (await buy(type.body.id, 1)).body;
+      await request(app).post(`/orders/${order.id}/checkout`).set("x-order-token", order.accessToken);
+      const body = fake.preferences[0].body;
+      for (const key of ["marketplace_fee", "binary_mode", "payment_methods", "expires", "expiration_date_to", "statement_descriptor"]) {
+        expect(body[key]).toBeUndefined();
+      }
+      expect(body.external_reference).toBe(order.id);
+    } finally {
+      delete process.env.MP_OMITIR;
+    }
+  });
+});
