@@ -6,6 +6,14 @@ export const SITE = {
   tagline: "Las mejores fechas, en un solo lugar.",
   // Email de contacto que se muestra en el pie y en las páginas legales.
   contactEmail: "eckotickets@gmail.com",
+  // Redes del pie de página: poné el link de cada cuenta. Las que queden vacías no se muestran.
+  social: {
+    instagram: "https://www.instagram.com/",
+    tiktok: "https://www.tiktok.com/",
+    x: "https://x.com/",
+    youtube: "",
+    whatsapp: "",
+  },
 };
 
 // Links de contacto: <a data-contact-email></a> (si el link no tiene texto, muestra el email).
@@ -16,6 +24,25 @@ for (const el of document.querySelectorAll("[data-contact-email]")) {
 
 // Aplica el nombre del sitio al logo, al pie y al título de la pestaña.
 for (const el of document.querySelectorAll("[data-site-name]")) el.textContent = SITE.name;
+for (const el of document.querySelectorAll("[data-year]")) el.textContent = new Date().getFullYear();
+
+// Íconos de redes sociales (pie de página).
+const SOCIAL_ICONS = {
+  instagram: ["Instagram", '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="0.6" fill="currentColor"/>'],
+  tiktok: ["TikTok", '<path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M14 3c.4 2.7 2.3 4.6 5 5"/>'],
+  x: ["X", '<path d="M4 4l16 16M20 4 4 20"/>'],
+  youtube: ["YouTube", '<rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="m10 9.5 5 2.5-5 2.5z" fill="currentColor"/>'],
+  whatsapp: ["WhatsApp", '<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9 9.5c.5 2.5 2.5 4.5 5 5l1.2-1.2-2-1-.8.7c-.9-.4-1.7-1.2-2.1-2.1l.7-.8-1-2z"/>'],
+};
+for (const el of document.querySelectorAll("[data-social]")) {
+  el.innerHTML = Object.entries(SITE.social)
+    .filter(([key, url]) => url && SOCIAL_ICONS[key])
+    .map(([key, url]) => {
+      const [label, paths] = SOCIAL_ICONS[key];
+      return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" aria-label="${label}" title="${label}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg></a>`;
+    })
+    .join("");
+}
 document.title = document.title.replace("ecko", SITE.name);
 
 const priceFormatter = new Intl.NumberFormat("es-AR", {

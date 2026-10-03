@@ -1,6 +1,7 @@
 import { hashPassword } from "./auth.js";
 import { config } from "./config.js";
 import { prisma } from "./db.js";
+import { setDemoImage } from "./demo-images.js";
 
 export const DEMO_ORGANIZER = { email: "organizador@ticketera.test", password: "ticketera123" };
 
@@ -76,8 +77,8 @@ async function main() {
     },
   ];
 
-  for (const { ticketTypes, ...event } of events) {
-    await prisma.event.create({
+  for (const [i, { ticketTypes, ...event }] of events.entries()) {
+    const created = await prisma.event.create({
       data: {
         ...event,
         status: "PUBLISHED",
@@ -85,6 +86,7 @@ async function main() {
         ticketTypes: { create: ticketTypes },
       },
     });
+    await setDemoImage(created, i);
   }
   console.log(`Se cargaron ${events.length} eventos de ejemplo.`);
 }

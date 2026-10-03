@@ -1,7 +1,7 @@
 import { escapeHtml, eventImage } from "/js/common.js";
 
 // Carrusel de la portada con los flyers de todos los eventos, en bucle: el del centro se ve
-// grande y los de al lado más chicos. Cambia solo cada 5 segundos; también con las flechas,
+// grande y los de al lado más chicos. Cambia solo cada 5 segundos; también
 // tocando un flyer de costado o deslizando con el dedo.
 
 const INTERVAL = 5000;
@@ -21,7 +21,6 @@ export function renderFeatured(root, events) {
   root.hidden = false;
   const slides = [...stage.children];
   const total = slides.length;
-  root.classList.toggle("single", total === 1);
   let current = 0;
   let previous = new Map();
 
@@ -64,8 +63,6 @@ export function renderFeatured(root, events) {
       go(i);
     }
   });
-  root.querySelector(".featured-nav.prev").addEventListener("click", () => go(current - 1));
-  root.querySelector(".featured-nav.next").addEventListener("click", () => go(current + 1));
 
   // Deslizar con el dedo.
   let startX = null;

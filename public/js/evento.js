@@ -80,8 +80,7 @@ function render(event) {
           <div class="hero-cta">
             ${allSoldOut
               ? `<div class="from"><span>Entradas</span><strong>${allEnded ? "Venta finalizada" : "Agotadas"}</strong></div>`
-              : `<div class="from"><span>${from === 0 ? "Entrada" : "Desde"}</span><strong>${from === 0 ? "Gratis" : formatPrice(from)}</strong></div>
-                 <a class="btn btn-gradient" href="#entradas">Comprar entradas</a>`}
+              : `<div class="from"><span>${from === 0 ? "Entrada" : "Desde"}</span><strong>${from === 0 ? "Gratis" : formatPrice(from)}</strong></div>`}
             <button type="button" class="btn btn-secondary share-button" id="share">
               ${icon('<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="m16 6-4-4-4 4"/><path d="M12 2v13"/>')}
               <span>Compartir</span>

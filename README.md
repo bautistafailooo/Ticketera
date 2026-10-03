@@ -19,6 +19,10 @@ npm test
 
 Para convertir una cuenta existente en administrador: `npm run make-admin -- email@ejemplo.com`.
 
+Para que los eventos de prueba tengan imagen: `npm run demo:imagenes` le pone a **cada evento de la base** una imagen de ejemplo (de `demo/imagenes/`) según su nombre (rock, electrónica, stand up, jazz, fiesta, teatro, festival o club). Reemplaza la que tengan: usalo solo en tu compu.
+
+Las redes sociales del pie de página se configuran en `SITE.social`, en `public/js/common.js`.
+
 El nombre y el lema del sitio se cambian en un solo lugar: `SITE` en `public/js/common.js`.
 
 **Para probarla online desde tu compu, gratis:** `npm run tunel` (ver [TUNEL.md](TUNEL.md)).
