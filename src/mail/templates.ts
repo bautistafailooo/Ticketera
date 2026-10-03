@@ -60,52 +60,165 @@ type OrderMail = {
   complimentary: boolean;
   totalCents: number;
   feeCents: number;
-  orderUrl: string;
   event: { name: string; venue: string; address: string | null; startsAt: Date };
   directionsUrl: string | null;
+  flyerCid: string | null;
+  revocationUrl: string;
   tickets: { ticketType: string; code: string; cid: string }[];
 };
 
+const tz = "America/Argentina/Buenos_Aires";
+const dayFormatter = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: tz });
+const timeFormatter = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz });
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+// Mail de las entradas, oscuro como el sitio. Todo con tablas y estilos en línea para que se vea
+// igual en Gmail, Outlook y el mail del celular. Los QR van sobre blanco para que se escaneen bien.
 export function orderConfirmed(order: OrderMail) {
+  const font = "Arial,Helvetica,sans-serif";
+  const count = order.tickets.length;
+  const when = capitalize(dayFormatter.format(order.event.startsAt));
+  const time = `${timeFormatter.format(order.event.startsAt)} h`;
+  const label = (text: string) =>
+    `<div style="font:700 11px/1 ${font};letter-spacing:2px;text-transform:uppercase;color:#8a8aa3;margin:0 0 6px">${text}</div>`;
+
   const tickets = order.tickets
     .map(
       (t, i) => `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border:1px solid #e4e4ee;border-radius:12px">
-      <tr>
-        <td style="padding:16px;vertical-align:middle">
-          <div style="font-size:12px;color:#8a8aa3">Entrada ${i + 1} de ${order.tickets.length}</div>
-          <div style="font:800 20px Arial,Helvetica,sans-serif;margin:2px 0 6px">${esc(t.ticketType)}</div>
-          <div style="font:700 16px 'Courier New',monospace;letter-spacing:1px">${esc(t.code)}</div>
-        </td>
-        <td width="150" style="padding:12px;text-align:right;vertical-align:middle">
-          <img src="cid:${esc(t.cid)}" width="130" height="130" alt="QR de la entrada ${esc(t.code)}" style="display:block;margin-left:auto">
-        </td>
-      </tr>
-    </table>`,
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;border-collapse:separate">
+        <tr>
+          <td class="ticket-info" bgcolor="#1c1c2a" style="background:#1c1c2a;border:1px solid #2f2f45;border-right:none;border-radius:16px 0 0 16px;padding:20px 18px;vertical-align:middle">
+            ${label(`Entrada ${i + 1} de ${count}`)}
+            <div style="font:800 22px/1.2 ${font};color:#ffffff;margin:0 0 12px">${esc(t.ticketType)}</div>
+            <div style="font:12px/1 ${font};color:#8a8aa3;margin:0 0 4px">Código</div>
+            <div style="font:700 16px/1.2 'Courier New',monospace;letter-spacing:1px;color:#ff7aa8;white-space:nowrap">${esc(t.code)}</div>
+          </td>
+          <td width="150" class="qr-cell" bgcolor="#ffffff" style="background:#ffffff;border:1px solid #2f2f45;border-left:2px dashed #b9b9cc;border-radius:0 16px 16px 0;padding:12px;text-align:center;vertical-align:middle">
+            <img class="qr" src="cid:${esc(t.cid)}" width="126" height="126" alt="QR de la entrada ${esc(t.code)}" style="display:block;margin:0 auto;border:0">
+          </td>
+        </tr>
+      </table>`,
     )
     .join("");
 
-  const html = layout({
-    preheader: `Tus entradas para ${order.event.name}`,
-    body: `
-      ${h1(order.complimentary ? "¡Tenés una invitación!" : "¡Tus entradas están listas!")}
-      ${p(
-        order.complimentary
-          ? `Hola ${esc(order.buyerName)}, te invitaron a <b>${esc(order.event.name)}</b>. Estas son tus entradas.`
-          : `Hola ${esc(order.buyerName)}, tu compra para <b>${esc(order.event.name)}</b> está confirmada.`,
-      )}
-      ${p(`<b>Cuándo:</b> ${esc(formatDate(order.event.startsAt))}<br><b>Dónde:</b> ${esc(order.event.venue)}${order.event.address ? ` · ${esc(order.event.address)}` : ""}${order.directionsUrl ? ` (<a href="${esc(order.directionsUrl)}" style="color:#b35cff">cómo llegar</a>)` : ""}<br><b>Total:</b> ${esc(formatPrice(order.totalCents))}${order.feeCents > 0 ? ` (incluye ${esc(formatPrice(order.feeCents))} de cargo por servicio)` : ""}`)}
-      ${muted("Mostrá el QR de cada entrada en la puerta. Si no se puede escanear, dictá el código.")}
-      ${tickets}
-      ${button(order.orderUrl, "Ver mis entradas")}
-      ${muted("No reenvíes este mail: quien tenga los códigos puede usar las entradas.")}`,
-  });
+  const detail = (title: string, value: string, extra = "") => `
+    <td valign="top" style="padding:0 10px 0 0">
+      ${label(title)}
+      <div style="font:700 15px/1.35 ${font};color:#ffffff">${value}</div>${extra}
+    </td>`;
+
+  const flyer = order.flyerCid
+    ? `<td width="132" class="flyer-cell" valign="top" style="padding:0 20px 0 0"><img class="flyer" src="cid:${esc(order.flyerCid)}" width="132" alt="" style="display:block;width:132px;height:auto;border-radius:12px;border:0"></td>`
+    : "";
+
+  const html = `<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">
+<style>
+  @media (max-width: 480px) {
+    .flyer-cell { width: 92px !important; padding-right: 14px !important; }
+    .flyer { width: 92px !important; }
+    .event-name { font-size: 22px !important; }
+    .ticket-info { padding: 16px 14px !important; }
+    .qr-cell { width: 116px !important; padding: 10px !important; }
+    .qr { width: 96px !important; height: 96px !important; }
+  }
+</style></head>
+<body style="margin:0;padding:0;background:#0b0b12" bgcolor="#0b0b12">
+  <div style="display:none;max-height:0;overflow:hidden">${esc(`${when}, ${time} · ${order.event.venue} · ${count} ${count === 1 ? "entrada" : "entradas"} con QR`)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#0b0b12" style="background:#0b0b12">
+    <tr><td align="center" style="padding:28px 14px 36px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:580px">
+
+        <tr><td style="padding:0 6px 18px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td style="font:800 30px/1 ${font};color:#ff4d8d;letter-spacing:-1px">ecko</td>
+            <td align="right" style="font:700 11px/1 ${font};letter-spacing:2px;text-transform:uppercase;color:#8a8aa3">${order.complimentary ? "Invitación" : "Compra confirmada"}</td>
+          </tr></table>
+        </td></tr>
+
+        <tr><td bgcolor="#14141f" style="background:#14141f;border:1px solid #2a2a3d;border-radius:22px;overflow:hidden">
+          <div style="height:4px;line-height:4px;font-size:0;background:#ff4d8d;background-image:linear-gradient(90deg,#ff4d8d,#b35cff,#6b7bff)">&nbsp;</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:28px 26px 8px">
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              ${flyer}
+              <td valign="middle">
+                <div style="display:inline-block;padding:6px 12px;border-radius:999px;background:#0f2e24;font:700 12px/1 ${font};color:#34d399;margin:0 0 14px">&#10003; ${order.complimentary ? "Te invitaron" : "Pago aprobado"}</div>
+                <div class="event-name" style="font:800 28px/1.12 ${font};color:#ffffff;letter-spacing:-0.5px;margin:0 0 10px">${esc(order.event.name)}</div>
+                <div style="font:15px/1.5 ${font};color:#b9b9cc">Hola ${esc(order.buyerName)}, ${order.complimentary ? "estas son tus entradas." : "¡ya tenés tus entradas!"}</div>
+              </td>
+            </tr></table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:26px 0 0;border-top:1px solid #2a2a3d;border-bottom:1px solid #2a2a3d">
+              <tr><td style="padding:18px 0">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                  ${detail("Fecha", esc(when))}
+                  ${detail("Hora", esc(time))}
+                </tr></table>
+              </td></tr>
+              <tr><td style="padding:0 0 18px">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                  ${detail(
+                    "Lugar",
+                    `${esc(order.event.venue)}${order.event.address ? `<br><span style="font-weight:400;color:#b9b9cc">${esc(order.event.address)}</span>` : ""}`,
+                    order.directionsUrl
+                      ? `<div style="margin:8px 0 0"><a href="${esc(order.directionsUrl)}" style="font:700 14px ${font};color:#c9b4ff;text-decoration:none">Ver cómo llegar &rarr;</a></div>`
+                      : "",
+                  )}
+                </tr></table>
+              </td></tr>
+            </table>
+
+            <div style="margin:26px 0 14px">${label(count === 1 ? "Tu entrada" : `Tus ${count} entradas`)}</div>
+            ${tickets}
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 0;border-top:1px solid #2a2a3d">
+              ${
+                order.complimentary
+                  ? `<tr><td style="padding:16px 0;font:15px ${font};color:#b9b9cc">Invitación</td><td align="right" style="padding:16px 0;font:800 18px ${font};color:#ffffff">Sin costo</td></tr>`
+                  : `${
+                      order.feeCents > 0
+                        ? `<tr><td style="padding:16px 0 0;font:14px ${font};color:#8a8aa3">Cargo por servicio</td><td align="right" style="padding:16px 0 0;font:14px ${font};color:#8a8aa3">${esc(formatPrice(order.feeCents))}</td></tr>`
+                        : ""
+                    }
+                    <tr><td style="padding:10px 0 16px;font:700 15px ${font};color:#ffffff">Total pagado</td><td align="right" style="padding:10px 0 16px;font:800 22px ${font};color:#ffffff">${esc(formatPrice(order.totalCents))}</td></tr>`
+              }
+            </table>
+
+          </td></tr></table>
+
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#101019" style="background:#101019;border-top:1px solid #2a2a3d"><tr><td style="padding:22px 26px">
+            ${label("En la puerta")}
+            <table role="presentation" cellpadding="0" cellspacing="0" style="font:14px/1.5 ${font};color:#b9b9cc">
+              <tr><td valign="top" style="padding:4px 10px 4px 0;color:#ff4d8d">&#9679;</td><td style="padding:4px 0">Mostrá el QR de cada entrada desde este mail. Subí el brillo del celular.</td></tr>
+              <tr><td valign="top" style="padding:4px 10px 4px 0;color:#b35cff">&#9679;</td><td style="padding:4px 0">Cada QR vale para una persona y se puede usar una sola vez. Si no se puede escanear, dictá el código.</td></tr>
+              <tr><td valign="top" style="padding:4px 10px 4px 0;color:#6b7bff">&#9679;</td><td style="padding:4px 0">No reenvíes ni publiques este mail: quien tenga los códigos puede usar las entradas.</td></tr>
+            </table>
+          </td></tr></table>
+        </td></tr>
+
+        <tr><td style="padding:22px 8px 0;font:12px/1.6 ${font};color:#6f6f8a;text-align:center">
+          ${order.complimentary ? "Te llegó este mail porque te invitaron a un evento en ecko." : "Te llegó este mail porque compraste entradas en ecko."}<br>
+          ${order.complimentary ? "" : `Si te arrepentiste de la compra, tenés 10 días: <a href="${esc(order.revocationUrl)}" style="color:#8a8aa3">Botón de arrepentimiento</a>.`}
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
   const text = [
-    `¡Tus entradas están listas!`,
-    `${order.event.name} — ${formatDate(order.event.startsAt)} — ${order.event.venue}${order.event.address ? `, ${order.event.address}` : ""}`,
+    order.complimentary ? "¡Tenés una invitación!" : "¡Tus entradas están listas!",
+    "",
+    order.event.name,
+    `${when}, ${time}`,
+    `${order.event.venue}${order.event.address ? `, ${order.event.address}` : ""}`,
     ...(order.directionsUrl ? [`Cómo llegar: ${order.directionsUrl}`] : []),
+    "",
     ...order.tickets.map((t, i) => `Entrada ${i + 1}: ${t.ticketType} — código ${t.code}`),
-    `Ver tus entradas: ${order.orderUrl}`,
+    "",
+    order.complimentary ? "Invitación sin costo." : `Total pagado: ${formatPrice(order.totalCents)}`,
+    "Mostrá el QR de cada entrada en la puerta. No reenvíes este mail: quien tenga los códigos puede usar las entradas.",
   ].join("\n");
   return { subject: `${order.complimentary ? "Tu invitación" : "Tus entradas"} para ${order.event.name}`, html, text };
 }

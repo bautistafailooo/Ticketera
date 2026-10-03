@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import QRCode from "qrcode";
 import { config } from "../config.js";
 import { prisma } from "../db.js";
@@ -8,12 +10,26 @@ import * as templates from "./templates.js";
 export const orderUrl = (order: { id: string; accessToken: string }) =>
   `${config.publicUrl}/orden.html#${encodeURIComponent(order.id)}.${encodeURIComponent(order.accessToken)}`;
 
+const FLYER_TYPES: Record<string, string> = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
+
+async function flyerAttachment(imageFile: string | null) {
+  if (!imageFile || imageFile.includes("/") || imageFile.includes("\\")) return null;
+  const contentType = FLYER_TYPES[path.extname(imageFile).toLowerCase()];
+  if (!contentType) return null;
+  try {
+    const content = await readFile(path.join(config.uploadDir, imageFile));
+    return { filename: `flyer${path.extname(imageFile)}`, cid: "flyer@ecko", contentType, content };
+  } catch {
+    return null; // sin el archivo, el mail sale sin flyer
+  }
+}
+
 // Manda las entradas de una orden paga, con el QR de cada una adjunto.
 export async function sendOrderConfirmation(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      event: { select: { name: true, venue: true, address: true, startsAt: true } },
+      event: { select: { name: true, venue: true, address: true, startsAt: true, imageFile: true } },
       tickets: { include: { ticketType: { select: { name: true } } }, orderBy: { createdAt: "asc" } },
     },
   });
@@ -28,14 +44,18 @@ export async function sendOrderConfirmation(orderId: string) {
       content: await QRCode.toBuffer(t.code, { type: "png", width: 360, margin: 1 }),
     })),
   );
+  // El flyer va adjunto dentro del mail (no como link): así se ve aunque cambie la dirección del sitio.
+  const flyer = await flyerAttachment(order.event.imageFile);
+  if (flyer) attachments.push(flyer);
   const message = templates.orderConfirmed({
     buyerName: order.buyerName,
     complimentary: order.complimentary,
     totalCents: order.totalCents,
     feeCents: order.feeCents,
-    orderUrl: orderUrl(order),
     event: order.event,
     directionsUrl: mapLinks(order.event.address)?.directionsUrl ?? null,
+    flyerCid: flyer?.cid ?? null,
+    revocationUrl: `${config.publicUrl}/arrepentimiento.html`,
     tickets,
   });
   await sendMail({ to: order.buyerEmail, ...message, attachments });

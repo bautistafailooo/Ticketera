@@ -1,5 +1,8 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { config } from "../src/config.js";
 import { prisma } from "../src/db.js";
 import { describeSmtp, explainMailError, mailFromOf, smtpSettings } from "../src/mail/smtp.js";
 import { sentMails } from "../src/mail/transport.js";
@@ -16,7 +19,7 @@ async function waitForMail(match: (m: (typeof sentMails)[number]) => boolean) {
 }
 
 describe("mail de entradas", () => {
-  it("al pagar se mandan las entradas con su QR y el link a la compra", async () => {
+  it("al pagar se mandan las entradas con su QR (sin link a la compra)", async () => {
     const { ticketTypeId } = await createPublishedEvent();
     const order = (await buy(ticketTypeId, 2)).body;
     expect(sentMails).toHaveLength(0); // todavía no pagó
@@ -28,8 +31,21 @@ describe("mail de entradas", () => {
     expect(mail.attachments![0].contentType).toBe("image/png");
     const codes = (await getOrder(order)).body.tickets.map((t: { code: string }) => t.code);
     for (const code of codes) expect(mail.html).toContain(code);
-    expect(mail.html).toContain(`https://ecko.test/orden.html#${order.id}.${order.accessToken}`);
+    expect(mail.html).not.toContain(order.accessToken);
+    expect(mail.text).not.toContain(order.accessToken);
     await expect.poll(async () => (await prisma.order.findUnique({ where: { id: order.id } }))?.emailedAt).toBeTruthy();
+  });
+
+  it("el flyer del evento va adjunto dentro del mail", async () => {
+    const { eventId, ticketTypeId } = await createPublishedEvent();
+    const file = `${"a".repeat(32)}.png`;
+    await mkdir(config.uploadDir, { recursive: true });
+    await writeFile(path.join(config.uploadDir, file), Buffer.from("flyer"));
+    await prisma.event.update({ where: { id: eventId }, data: { imageFile: file } });
+    await pay((await buy(ticketTypeId, 1)).body);
+    const mail = await waitForMail((m) => m.subject.startsWith("Tus entradas"));
+    expect(mail.attachments?.map((a) => a.cid)).toContain("flyer@ecko");
+    expect(mail.html).toContain("cid:flyer@ecko");
   });
 
   it("las entradas gratis se mandan al comprar", async () => {
