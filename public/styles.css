@@ -483,42 +483,76 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 
 /* ---------------- Tarjetas de eventos ---------------- */
 
-.event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 36px 24px; }
+.event-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
 
-/* Tarjeta liviana: flyer cuadrado con un borde fino y los datos abajo, sin caja. */
-.event-card { display: flex; flex-direction: column; color: inherit; }
-.event-card:hover { text-decoration: none; }
-/* overflow: hidden hace que el cuadrado sea fijo: sin esto, un flyer muy alto estira la tarjeta. */
-.event-card .media {
+/* La foto ocupa toda la tarjeta y los datos van abajo, sobre un degradé oscuro. */
+.event-card {
   position: relative;
-  aspect-ratio: 1;
+  display: block;
+  aspect-ratio: 5 / 6;
   overflow: hidden;
-  border-radius: 12px;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07);
-  transition: box-shadow 0.3s, transform 0.3s;
+  color: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: var(--surface-2);
+  box-shadow: 0 14px 34px -18px rgba(0, 0, 0, 0.8);
+  isolation: isolate;
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
 }
-.event-card .media .flyer-frame, .event-card .media .flyer-placeholder { transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.event-card:hover .media { transform: translateY(-3px); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16), 0 18px 40px -18px rgba(179, 92, 255, 0.45); }
-.event-card:hover .media .flyer-frame, .event-card:hover .media .flyer-placeholder { transform: scale(1.035); }
-.event-card .body { padding: 14px 2px 0; display: flex; flex-direction: column; gap: 3px; flex: 1; }
-.event-card .when { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
-.event-card h3 { font-size: 1.08rem; font-weight: 700; line-height: 1.25; margin: 2px 0 0; }
-.event-card .venue { color: var(--muted); font-size: 0.88rem; }
-.event-card .meta {
-  margin-top: auto;
-  padding-top: 12px;
+.event-card:hover {
+  text-decoration: none;
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 22px 44px -18px rgba(179, 92, 255, 0.45);
+}
+.event-card .media { position: absolute; inset: 0; z-index: -1; }
+.event-card .media > * { transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.event-card:hover .media > * { transform: scale(1.04); }
+/* Acá la foto llena la tarjeta (recortada), en vez de mostrarse entera sobre un fondo desenfocado. */
+.event-card .flyer-fill { display: none; }
+.event-card .flyer { object-fit: cover; }
+.event-card .flyer-placeholder { font-size: 4rem; padding-bottom: 30%; }
+.event-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgba(8, 8, 14, 0.35) 0%, rgba(8, 8, 14, 0) 22%, rgba(8, 8, 14, 0) 42%, rgba(8, 8, 14, 0.82) 72%, rgba(8, 8, 14, 0.96) 100%);
+}
+
+.event-card .top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.card-pill, .date-pill {
+  background: rgba(14, 14, 22, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+}
+.card-pill { display: inline-block; padding: 7px 11px; font-size: 0.78rem; font-weight: 700; }
+.card-pill.hot { background: rgba(232, 51, 111, 0.82); border-color: rgba(255, 255, 255, 0.2); }
+.date-pill { padding: 6px 10px; min-width: 52px; text-align: center; line-height: 1.05; margin-left: auto; }
+.date-pill .day { display: block; font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; }
+.date-pill .month { display: block; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.7); }
+
+.event-card .body { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 20px 16px; }
+.event-card h3 { font-size: 1.3rem; font-weight: 800; line-height: 1.15; margin: 0 0 6px; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5); }
+.event-card .place { display: flex; align-items: center; gap: 6px; font-size: 0.86rem; color: rgba(255, 255, 255, 0.82); min-width: 0; }
+.event-card .place svg { flex: none; opacity: 0.85; }
+.event-card .place span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.event-card .foot {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.86rem;
 }
-.event-card .price { font-weight: 700; font-size: 0.95rem; }
-.event-card .price .from { color: var(--faint); font-weight: 500; font-size: 0.8rem; margin-right: 2px; }
-.event-card .go { color: var(--faint); font-size: 0.85rem; transition: transform 0.25s, color 0.25s; }
-.event-card:hover .go { color: var(--accent); transform: translateX(3px); }
-.event-card .flyer-placeholder { font-size: 3.2rem; }
-.event-card .badge-slot { position: absolute; top: 10px; left: 10px; }
-.event-card .badge-slot .badge { backdrop-filter: blur(8px); font-size: 0.65rem; }
+.event-card .by { color: rgba(255, 255, 255, 0.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.event-card .by b { color: #c9b4ff; font-weight: 700; margin-left: 2px; }
+.event-card .price { font-weight: 800; white-space: nowrap; }
+.event-card .price .from { color: rgba(255, 255, 255, 0.55); font-weight: 500; font-size: 0.78rem; }
 
 /* Flyer o, si no hay, un degradé con la inicial. */
 .flyer-frame { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--surface-2); }
@@ -956,12 +990,8 @@ mark.fill { background: rgba(255, 196, 0, 0.18); color: #ffd666; padding: 0 4px;
   main.container { padding-top: 20px; }
   .card { padding: 18px; }
   .hero { padding: 48px 0 40px; }
-  .event-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 26px 14px; }
-  .event-card .body { padding-top: 10px; }
-  .event-card h3 { font-size: 0.98rem; }
-  .event-card .when { font-size: 0.64rem; letter-spacing: 0.08em; }
+  .event-grid { grid-template-columns: 1fr; gap: 18px; }
   .bg-lights span { width: 220px; height: 220px; }
-  .event-card .badge-slot .badge { font-size: 0.6rem; padding: 4px 8px; }
   .panel-grid { grid-template-columns: 1fr; }
   .ticket-stub { grid-template-columns: 1fr; }
   .ticket-stub .qr-side { border-left: none; border-top: 2px dashed var(--border-strong); }
