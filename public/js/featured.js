@@ -1,77 +1,44 @@
-import { lowestPrice, pinIcon } from "/js/cards.js";
-import { dateParts, escapeHtml, eventImage, formatPrice } from "/js/common.js";
+import { escapeHtml } from "/js/common.js";
 
-// Carrusel grande de la portada con los próximos eventos. Se desliza con el dedo
-// (scroll-snap), con las flechas o con los puntos, y pasa solo cada unos segundos.
+// Carrusel de la portada: solo los flyers de los próximos eventos; cada uno lleva a su evento.
+// Se desliza con el dedo (scroll-snap) o con las flechas, y avanza solo cada unos segundos.
 
-const MAX_SLIDES = 6;
-const INTERVAL = 6500;
-
-function slide(event, index, total) {
-  const href = `/evento.html?id=${encodeURIComponent(event.id)}`;
-  const flyer = event.imageFile ? `/media/${encodeURIComponent(event.imageFile)}` : null;
-  const { weekday, day, month, time } = dateParts(event.startsAt);
-  const from = lowestPrice(event);
-  const price = from === null ? "Agotado" : from === 0 ? "Entrada gratis" : `<span class="from">Desde</span> ${formatPrice(from)}`;
-  return `
-    <article class="featured-slide" role="group" aria-roledescription="diapositiva" aria-label="${index + 1} de ${total}">
-      ${flyer ? `<div class="featured-bg" style="background-image: url('${escapeHtml(flyer)}')" aria-hidden="true"></div>` : '<div class="featured-bg plain" aria-hidden="true"></div>'}
-      <div class="container featured-inner">
-        <a class="featured-poster" href="${href}" tabindex="-1" aria-hidden="true">${eventImage(event)}</a>
-        <div class="featured-info">
-          <div class="featured-when">${escapeHtml(weekday)} ${escapeHtml(day)} ${escapeHtml(month)} · ${escapeHtml(time)} h</div>
-          <h2><a href="${href}">${escapeHtml(event.name)}</a></h2>
-          <div class="featured-place">${pinIcon}<span>${escapeHtml(event.venue)}</span></div>
-          ${event.organizer ? `<div class="featured-by">por <b>${escapeHtml(event.organizer.name)}</b></div>` : ""}
-          <div class="featured-cta">
-            <a class="btn btn-gradient" href="${href}">Comprar entradas</a>
-            <span class="featured-price">${price}</span>
-          </div>
-        </div>
-      </div>
-    </article>`;
-}
+const MAX_SLIDES = 12;
+const INTERVAL = 4000;
 
 export function renderFeatured(root, events) {
-  const shown = events.slice(0, MAX_SLIDES);
+  const shown = events.filter((e) => e.imageFile).slice(0, MAX_SLIDES);
   if (shown.length === 0) return;
   const track = root.querySelector(".featured-track");
-  const dots = root.querySelector(".featured-dots");
-  track.innerHTML = shown.map((e, i) => slide(e, i, shown.length)).join("");
-  dots.innerHTML = shown.map((_, i) => `<button type="button" aria-label="Ir al evento ${i + 1}"></button>`).join("");
+  track.innerHTML = shown
+    .map(
+      (e) => `
+      <a class="featured-slide" href="/evento.html?id=${encodeURIComponent(e.id)}" aria-label="${escapeHtml(e.name)}">
+        <img src="/media/${encodeURIComponent(e.imageFile)}" alt="${escapeHtml(e.name)}" loading="lazy">
+      </a>`,
+    )
+    .join("");
   root.hidden = false;
-  root.classList.toggle("single", shown.length === 1);
-  if (shown.length === 1) return;
 
-  let current = 0;
-  const go = (i) => {
-    current = (i + shown.length) % shown.length;
-    track.scrollTo({ left: current * track.clientWidth, behavior: "smooth" });
-  };
-  const mark = () => {
-    current = Math.round(track.scrollLeft / track.clientWidth);
-    [...dots.children].forEach((d, i) => d.setAttribute("aria-current", String(i === current)));
-  };
-  mark();
-  track.addEventListener("scroll", () => requestAnimationFrame(mark), { passive: true });
-  dots.addEventListener("click", (e) => {
-    const i = [...dots.children].indexOf(e.target);
-    if (i >= 0) go(i);
-  });
-  root.querySelector(".featured-nav.prev").addEventListener("click", () => go(current - 1));
-  root.querySelector(".featured-nav.next").addEventListener("click", () => go(current + 1));
+  const step = () => track.firstElementChild.getBoundingClientRect().width + parseFloat(getComputedStyle(track).columnGap || "0");
+  const atEnd = () => track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+  const next = () => track.scrollBy({ left: atEnd() ? -track.scrollWidth : step(), behavior: "smooth" });
+  const prev = () => track.scrollBy({ left: track.scrollLeft <= 4 ? track.scrollWidth : -step(), behavior: "smooth" });
+  const updateArrows = () => root.classList.toggle("fits", track.scrollWidth <= track.clientWidth + 4);
+  updateArrows();
+  addEventListener("resize", updateArrows);
+  root.querySelector(".featured-nav.prev").addEventListener("click", prev);
+  root.querySelector(".featured-nav.next").addEventListener("click", next);
 
-  // Pasa solo, salvo mientras el mouse o el foco están encima, o si la persona prefiere menos movimiento.
+  // Avanza solo, salvo con el mouse o el foco encima, después de tocarlo, o si la persona prefiere menos movimiento.
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   let paused = false;
-  const pause = () => (paused = true);
-  const resume = () => (paused = false);
-  root.addEventListener("pointerenter", pause);
-  root.addEventListener("pointerleave", resume);
-  root.addEventListener("focusin", pause);
-  root.addEventListener("focusout", resume);
-  track.addEventListener("touchstart", pause, { passive: true });
+  root.addEventListener("pointerenter", () => (paused = true));
+  root.addEventListener("pointerleave", () => (paused = false));
+  root.addEventListener("focusin", () => (paused = true));
+  root.addEventListener("focusout", () => (paused = false));
+  track.addEventListener("touchstart", () => (paused = true), { passive: true });
   setInterval(() => {
-    if (!paused && !document.hidden) go(current + 1);
+    if (!paused && !document.hidden && !root.classList.contains("fits")) next();
   }, INTERVAL);
 }
