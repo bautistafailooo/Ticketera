@@ -82,21 +82,35 @@ export function orderConfirmed(order: OrderMail) {
   const label = (text: string) =>
     `<div style="font:700 11px/1 ${font};letter-spacing:2px;text-transform:uppercase;color:#8a8aa3;margin:0 0 6px">${text}</div>`;
 
+  // Cada entrada: arriba el tipo y a nombre de quién está; abajo el QR grande sobre blanco
+  // (fácil de escanear en la puerta) y el código por si hay que dictarlo.
   const tickets = order.tickets
     .map(
       (t, i) => `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;border-collapse:separate">
-        <tr>
-          <td class="ticket-info" bgcolor="#1c1c2a" style="background:#1c1c2a;border:1px solid #2f2f45;border-right:none;border-radius:16px 0 0 16px;padding:20px 18px;vertical-align:middle">
-            ${label(`Entrada ${i + 1} de ${count}`)}
-            <div style="font:800 22px/1.2 ${font};color:#ffffff;margin:0 0 12px">${esc(t.ticketType)}</div>
-            <div style="font:12px/1 ${font};color:#8a8aa3;margin:0 0 4px">Código</div>
-            <div style="font:700 16px/1.2 'Courier New',monospace;letter-spacing:1px;color:#ff7aa8;white-space:nowrap">${esc(t.code)}</div>
-          </td>
-          <td width="150" class="qr-cell" bgcolor="#ffffff" style="background:#ffffff;border:1px solid #2f2f45;border-left:2px dashed #b9b9cc;border-radius:0 16px 16px 0;padding:12px;text-align:center;vertical-align:middle">
-            <img class="qr" src="cid:${esc(t.cid)}" width="126" height="126" alt="QR de la entrada ${esc(t.code)}" style="display:block;margin:0 auto;border:0">
-          </td>
-        </tr>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#1c1c2a" style="margin:0 0 18px;background:#1c1c2a;border:1px solid #2f2f45;border-radius:18px;border-collapse:separate">
+        <tr><td style="padding:18px 20px 16px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td valign="top">
+              ${label(`Entrada ${i + 1} de ${count}`)}
+              <div style="font:800 22px/1.2 ${font};color:#ffffff">${esc(t.ticketType)}</div>
+            </td>
+            <td valign="top" align="right">
+              ${label("A nombre de")}
+              <div style="font:700 16px/1.3 ${font};color:#ffffff">${esc(order.buyerName)}</div>
+            </td>
+          </tr></table>
+        </td></tr>
+        <tr><td style="padding:0 14px 14px;border-top:2px dashed #3a3a52">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="margin:14px 0 0;background:#ffffff;border-radius:14px">
+            <tr><td align="center" style="padding:22px 16px 8px">
+              <img src="cid:${esc(t.cid)}" width="260" height="260" alt="QR de la entrada ${esc(t.code)}" style="display:block;width:260px;max-width:100%;height:auto;border:0">
+            </td></tr>
+            <tr><td align="center" style="padding:4px 16px 20px">
+              <div style="font:12px/1 ${font};color:#6b6b80;margin:0 0 6px">Código</div>
+              <div style="font:700 20px/1.2 'Courier New',monospace;letter-spacing:2px;color:#14141f;white-space:nowrap">${esc(t.code)}</div>
+            </td></tr>
+          </table>
+        </td></tr>
       </table>`,
     )
     .join("");
@@ -118,9 +132,6 @@ export function orderConfirmed(order: OrderMail) {
     .flyer-cell { width: 92px !important; padding-right: 14px !important; }
     .flyer { width: 92px !important; }
     .event-name { font-size: 22px !important; }
-    .ticket-info { padding: 16px 14px !important; }
-    .qr-cell { width: 116px !important; padding: 10px !important; }
-    .qr { width: 96px !important; height: 96px !important; }
   }
 </style></head>
 <body style="margin:0;padding:0;background:#0b0b12" bgcolor="#0b0b12">
@@ -158,6 +169,11 @@ export function orderConfirmed(order: OrderMail) {
               </td></tr>
               <tr><td style="padding:0 0 18px">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                  ${detail(order.complimentary ? "Invitado/a" : "Comprador/a", esc(order.buyerName))}
+                </tr></table>
+              </td></tr>
+              <tr><td style="padding:0 0 18px">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
                   ${detail(
                     "Lugar",
                     `${esc(order.event.venue)}${order.event.address ? `<br><span style="font-weight:400;color:#b9b9cc">${esc(order.event.address)}</span>` : ""}`,
@@ -190,7 +206,7 @@ export function orderConfirmed(order: OrderMail) {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#101019" style="background:#101019;border-top:1px solid #2a2a3d"><tr><td style="padding:22px 26px">
             ${label("En la puerta")}
             <table role="presentation" cellpadding="0" cellspacing="0" style="font:14px/1.5 ${font};color:#b9b9cc">
-              <tr><td valign="top" style="padding:4px 10px 4px 0;color:#ff4d8d">&#9679;</td><td style="padding:4px 0">Mostrá el QR de cada entrada desde este mail. Subí el brillo del celular.</td></tr>
+              <tr><td valign="top" style="padding:4px 10px 4px 0;color:#ff4d8d">&#9679;</td><td style="padding:4px 0">Mostrá el QR de cada entrada desde este mail, con el brillo del celular alto. Si son varias, cada persona muestra el suyo.</td></tr>
               <tr><td valign="top" style="padding:4px 10px 4px 0;color:#b35cff">&#9679;</td><td style="padding:4px 0">Cada QR vale para una persona y se puede usar una sola vez. Si no se puede escanear, dictá el código.</td></tr>
               <tr><td valign="top" style="padding:4px 10px 4px 0;color:#6b7bff">&#9679;</td><td style="padding:4px 0">No reenvíes ni publiques este mail: quien tenga los códigos puede usar las entradas.</td></tr>
             </table>
@@ -215,6 +231,7 @@ export function orderConfirmed(order: OrderMail) {
     `${order.event.venue}${order.event.address ? `, ${order.event.address}` : ""}`,
     ...(order.directionsUrl ? [`Cómo llegar: ${order.directionsUrl}`] : []),
     "",
+    `A nombre de: ${order.buyerName}`,
     ...order.tickets.map((t, i) => `Entrada ${i + 1}: ${t.ticketType} — código ${t.code}`),
     "",
     order.complimentary ? "Invitación sin costo." : `Total pagado: ${formatPrice(order.totalCents)}`,

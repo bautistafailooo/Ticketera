@@ -41,7 +41,7 @@ export async function sendOrderConfirmation(orderId: string) {
       filename: `entrada-${i + 1}.png`,
       cid: t.cid,
       contentType: "image/png",
-      content: await QRCode.toBuffer(t.code, { type: "png", width: 360, margin: 1 }),
+      content: await QRCode.toBuffer(t.code, { type: "png", width: 520, margin: 1 }),
     })),
   );
   // El flyer va adjunto dentro del mail (no como link): así se ve aunque cambie la dirección del sitio.

@@ -25,7 +25,7 @@ async function sampleTicketsMail(): Promise<Mail> {
       filename: `entrada-${i + 1}.png`,
       cid: t.cid,
       contentType: "image/png",
-      content: await QRCode.toBuffer(t.code, { type: "png", width: 360, margin: 1 }),
+      content: await QRCode.toBuffer(t.code, { type: "png", width: 520, margin: 1 }),
     })),
   );
   attachments.push({
