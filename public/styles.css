@@ -489,7 +489,7 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 .event-card {
   position: relative;
   display: block;
-  aspect-ratio: 5 / 6;
+  aspect-ratio: 1;
   overflow: hidden;
   color: #fff;
   border-radius: 16px;
