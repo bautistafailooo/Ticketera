@@ -1,5 +1,6 @@
 import { eventCard } from "/js/cards.js";
 import { SITE, api, dateParts, escapeHtml } from "/js/common.js";
+import { renderFeatured } from "/js/featured.js";
 import { startEcho } from "/js/fx.js";
 
 startEcho(document.getElementById("echo"));
@@ -49,6 +50,7 @@ search.addEventListener("input", render);
 
 try {
   events = await api("/events");
+  renderFeatured(document.getElementById("featured"), events);
   render();
   renderMarquee();
 } catch (err) {
