@@ -481,41 +481,53 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 40px 0 20px; flex-wrap: wrap; }
 .section-head h2 { font-size: 1.6rem; margin: 0; }
 
-/* ---------------- Carrusel de la portada (solo flyers) ---------------- */
+/* ---------------- Carrusel de la portada (flyers en bucle) ---------------- */
 
-.featured { padding: 32px 0; border-bottom: 1px solid var(--border); }
+.featured { padding: 36px 0 40px; border-bottom: 1px solid var(--border); overflow: hidden; }
 .featured-wrap { position: relative; }
-.featured-track {
-  --per-view: 4;
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  padding: 6px 0 12px;
+.featured-stage {
+  --w: 300px;   /* ancho del flyer central */
+  --gap: 250px; /* distancia entre los centros de los flyers */
+  position: relative;
+  height: calc(var(--w) * 1.25);
 }
-.featured-track::-webkit-scrollbar { display: none; }
 .featured-slide {
-  flex: 0 0 calc((100% - (var(--per-view) - 1) * 16px) / var(--per-view));
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--w);
   aspect-ratio: 4 / 5;
-  scroll-snap-align: start;
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
   background: var(--surface-2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 16px 34px -20px rgba(0, 0, 0, 0.9);
-  transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform: translateX(calc(-50% + var(--d) * var(--gap))) scale(var(--s, 0.6));
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.7s cubic-bezier(0.22, 0.75, 0.2, 1), opacity 0.6s, filter 0.6s, box-shadow 0.6s;
 }
-.featured-slide img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.featured-slide:hover { transform: translateY(-4px); border-color: rgba(255, 255, 255, 0.2); box-shadow: 0 22px 44px -18px rgba(179, 92, 255, 0.45); }
-.featured-slide:hover img { transform: scale(1.04); }
+.featured-slide.no-anim { transition: none; }
+.featured-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.featured-slide .flyer-fill { display: none; }
+.featured-slide .flyer { object-fit: cover; }
+.featured-slide .flyer-placeholder { font-size: 5rem; }
+.featured-slide[data-pos="center"] {
+  --s: 1;
+  opacity: 1;
+  z-index: 3;
+  pointer-events: auto;
+  box-shadow: 0 30px 70px -26px rgba(179, 92, 255, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.14);
+}
+.featured-slide[data-pos="side1"] { --s: 0.78; opacity: 1; z-index: 2; filter: brightness(0.5) saturate(0.8); pointer-events: auto; cursor: pointer; }
+.featured-slide[data-pos="side2"] { --s: 0.6; opacity: 0.7; z-index: 1; filter: brightness(0.35) saturate(0.7); pointer-events: auto; cursor: pointer; }
+.featured-slide[data-pos^="side"]:hover { filter: brightness(0.75); }
+.featured-slide[data-pos="center"]:hover { text-decoration: none; }
 
 .featured-nav {
   position: absolute;
-  top: calc(50% - 3px);
+  top: 50%;
   transform: translateY(-50%);
-  z-index: 1;
+  z-index: 4;
   width: 44px;
   height: 44px;
   display: grid;
@@ -532,18 +544,12 @@ tfoot th, tfoot td { color: var(--text); font-size: 1rem; text-transform: none; 
 .featured-nav:hover { background: rgba(14, 14, 22, 0.9); border-color: rgba(255, 255, 255, 0.3); }
 .featured-nav.prev { left: 0; }
 .featured-nav.next { right: 0; }
-.featured.fits .featured-nav { display: none; }
-@media (min-width: 1300px) {
-  .featured-nav.prev { left: -22px; }
-  .featured-nav.next { right: -22px; }
-}
+.featured.single .featured-nav { display: none; }
 
-@media (max-width: 900px) { .featured-track { --per-view: 3; } }
+@media (max-width: 900px) { .featured-stage { --w: 260px; --gap: 200px; } }
 @media (max-width: 700px) {
-  .featured { padding: 22px 0; }
-  /* Hasta el borde de la pantalla, para que se note que se desliza. */
-  .featured-track { --per-view: 1.6; gap: 12px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scroll-padding: 0 16px; }
-  .featured-slide { flex-basis: calc((100% - 44px) / 1.6); }
+  .featured { padding: 24px 0 28px; }
+  .featured-stage { --w: 62vw; --gap: 46vw; }
   .featured-nav { display: none; }
 }
 
